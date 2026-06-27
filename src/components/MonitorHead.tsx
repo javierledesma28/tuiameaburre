@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function MonitorHead({ className = "" }: { className?: string }) {
+export default function MonitorHead({ className = "", photoSrc }: { className?: string; photoSrc?: string }) {
   const ref = useRef<SVGSVGElement>(null);
   const [gaze, setGaze] = useState({ x: 0, y: 0 });
 
@@ -60,6 +60,22 @@ export default function MonitorHead({ className = "" }: { className?: string }) 
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        {/* CRT phosphor-green filter for face photo */}
+        <filter id="mh-face-crt" colorInterpolationFilters="sRGB">
+          <feColorMatrix type="saturate" values="0" result="grey" />
+          <feColorMatrix
+            in="grey"
+            type="matrix"
+            values="0   0   0   0   0.05
+                    0.6 0.6 0.6 0   0.2
+                    0.1 0.1 0.1 0   0.05
+                    0   0   0   1   0"
+          />
+        </filter>
+        {/* Clip photo to screen bezel */}
+        <clipPath id="mh-screen-clip">
+          <rect x="22" y="52" width="76" height="58" rx="5" />
+        </clipPath>
       </defs>
 
       {/* ── Antenna ── */}
@@ -78,37 +94,52 @@ export default function MonitorHead({ className = "" }: { className?: string }) 
 
       {/* ── Screen bezel (inner) ── */}
       <rect x="22" y="52" width="76" height="58" rx="5" fill="#071007" />
-      <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-screen-glow)" />
-      <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-scan)" opacity="0.55" />
-      {/* Screen curvature highlight */}
-      <ellipse cx="60" cy="58" rx="28" ry="6" fill="rgba(143,240,181,0.04)" />
 
-      {/* ── Eyes (track cursor) ── */}
-      <g filter="url(#mh-glow)">
-        {/* Left eye socket */}
-        <ellipse cx="44" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
-        {/* Left eye iris + pupil */}
-        <ellipse cx={44 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
-        <ellipse cx={44 + x} cy={76 + y} rx="3.2" ry="3.2" fill="#071007" />
-        <circle cx={43.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
+      {photoSrc ? (
+        <>
+          {/* Face photo with phosphor-green CRT filter */}
+          <image
+            href={photoSrc}
+            x="22" y="52" width="76" height="58"
+            preserveAspectRatio="xMidYMid slice"
+            clipPath="url(#mh-screen-clip)"
+            filter="url(#mh-face-crt)"
+          />
+          {/* Scanlines + glow over photo */}
+          <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-scan)" opacity="0.55" />
+          <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-screen-glow)" />
+        </>
+      ) : (
+        <>
+          <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-screen-glow)" />
+          <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-scan)" opacity="0.55" />
+          {/* Screen curvature highlight */}
+          <ellipse cx="60" cy="58" rx="28" ry="6" fill="rgba(143,240,181,0.04)" />
 
-        {/* Right eye socket */}
-        <ellipse cx="76" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
-        {/* Right eye iris + pupil */}
-        <ellipse cx={76 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
-        <ellipse cx={76 + x} cy={76 + y} rx="3.2" ry="3.2" fill="#071007" />
-        <circle cx={75.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
-      </g>
+          {/* ── Eyes (track cursor) ── */}
+          <g filter="url(#mh-glow)">
+            <ellipse cx="44" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
+            <ellipse cx={44 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
+            <ellipse cx={44 + x} cy={76 + y} rx="3.2" ry="3.2" fill="#071007" />
+            <circle cx={43.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
 
-      {/* Mouth / expression bar */}
-      <path
-        d="M 46 95 Q 60 104 74 95"
-        fill="none"
-        stroke="#8ff0b5"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        filter="url(#mh-glow)"
-      />
+            <ellipse cx="76" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
+            <ellipse cx={76 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
+            <ellipse cx={76 + x} cy={76 + y} rx="3.2" ry="3.2" fill="#071007" />
+            <circle cx={75.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
+          </g>
+
+          {/* Mouth / expression bar */}
+          <path
+            d="M 46 95 Q 60 104 74 95"
+            fill="none"
+            stroke="#8ff0b5"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            filter="url(#mh-glow)"
+          />
+        </>
+      )}
 
       {/* Power LED + brand badge */}
       <circle cx="84" cy="108" r="3.5" fill="#5fbf7d" filter="url(#mh-led)" className="animate-flicker" />

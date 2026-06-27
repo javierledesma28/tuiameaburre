@@ -66,7 +66,7 @@ export default function Creator() {
         <div className="paper rounded-[5px] p-6 shadow-lift">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
             <div className="shrink-0">
-              <MonitorHead className="w-32 animate-float" />
+              <MonitorHead className="w-32 animate-float" photoSrc="/javier.jpg" />
             </div>
             <div className="text-center sm:text-left">
               <p className="mb-1 font-mono text-[11px] uppercase tracking-widest text-paper-ink/40">
