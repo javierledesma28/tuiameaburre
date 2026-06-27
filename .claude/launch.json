@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tu-ia-mala-onda",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 5050
+    },
+    {
+      "name": "tu-ia-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5175
+    },
+    {
+      "name": "synapsex-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:\\Workspaces\\personal\\synapsex", "run", "dev"],
+      "port": 5174
+    }
+  ]
+}

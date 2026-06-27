@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tu IA Mala Onda</title>
+    <meta
+      name="description"
+      content="Un juego donde los humanos se hacen pasar por IA. Sin redes neuronales: solo personas, un cuadro de texto y 60 segundos."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <canvas id="confetti" aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true">
+      <span class="blob b1"></span>
+      <span class="blob b2"></span>
+      <span class="blob b3"></span>
+      <div class="grid-overlay"></div>
+    </div>
+
+    <div class="app">
+      <header class="topbar">
+        <button class="brand" id="brandHome" aria-label="home">
+          <span class="logo">
+            <span class="logo-core"></span>
+            <span class="logo-ring"></span>
+          </span>
+          <span class="brand-text" data-i18n="brand">Tu IA Mala Onda</span>
+        </button>
+
+        <nav class="nav">
+          <button class="nav-link active" data-nav="home" data-i18n="navHome">Inicio</button>
+          <button class="nav-link" data-nav="wall" data-i18n="navWall">Muro</button>
+        </nav>
+
+        <div class="topbar-right">
+          <div class="credits" data-i18n-title="creditsHint">
+            <svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path
+                d="M12 2 3 7v10l9 5 9-5V7l-9-5Z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span id="creditCount">–</span>
+            <span class="credits-label" data-i18n="credits">créditos</span>
+          </div>
+          <button class="lang-toggle" id="langToggle" aria-label="language">
+            <span class="lang-on">ES</span><span class="lang-sep">/</span><span class="lang-off">EN</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <!-- ===================== INICIO / HOME ===================== -->
+        <section class="screen active" id="screen-home">
+          <div class="hero">
+            <span class="badge">
+              <span class="badge-dot"></span>
+              <span data-i18n="badge">Sin redes neuronales. 100% humanos.</span>
+            </span>
+
+            <h1 class="hero-title" data-i18n="heroTitle">Tu IA me aburre.</h1>
+
+            <div class="hero-typer">
+              <span class="typer-prompt">&gt;</span>
+              <span class="typer-text" id="typer"></span>
+              <span class="caret"></span>
+            </div>
+
+            <p class="hero-sub" data-i18n="homeSubtitle">
+              Sin redes neuronales. Solo personas, un cuadro de texto y 60 segundos.
+            </p>
+
+            <div class="hero-cta">
+              <button class="btn primary lg" id="ctaAsk">
+                <svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.5A8 8 0 1 1 21 12Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                </svg>
+                <span data-i18n="askCardTitle">Preguntar</span>
+              </button>
+              <button class="btn glass lg" id="ctaAnswer">
+                <svg class="ic" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <rect x="4" y="8" width="16" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/>
+                  <path d="M12 8V4M9 4h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                  <circle cx="9" cy="13.5" r="1.3" fill="currentColor"/>
+                  <circle cx="15" cy="13.5" r="1.3" fill="currentColor"/>
+                </svg>
+                <span data-i18n="answerCardTitle">Responder como IA</span>
+              </button>
+            </div>
+
+            <div class="stats" id="stats">
+              <div class="stat">
+                <span class="stat-num" id="statOnline">–</span>
+                <span class="stat-label" data-i18n="statOnline">en línea</span>
+              </div>
+              <span class="stat-div"></span>
+              <div class="stat">
+                <span class="stat-num" id="statAnswered">–</span>
+                <span class="stat-label" data-i18n="statAnswered">respuestas dadas</span>
+              </div>
+              <span class="stat-div"></span>
+              <div class="stat">
+                <span class="stat-num" id="statPending">–</span>
+                <span class="stat-label" data-i18n="statPending">esperando</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="modes">
+            <button class="mode-card ask" id="goAsk">
+              <span class="mode-icon">
+                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                  <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-4.5A8 8 0 1 1 21 12Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="mode-title" data-i18n="askCardTitle">Preguntar</span>
+              <span class="mode-desc" data-i18n="askCardDesc"
+                >Haz una pregunta. Un humano la responderá fingiendo ser IA.</span
+              >
+              <span class="mode-foot cost" data-i18n="askCardCost">Cuesta 1 crédito</span>
+            </button>
+
+            <button class="mode-card answer" id="goAnswer">
+              <span class="mode-icon">
+                <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                  <rect x="4" y="8" width="16" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/>
+                  <path d="M12 8V4M9 4h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  <circle cx="9" cy="13.5" r="1.4" fill="currentColor"/>
+                  <circle cx="15" cy="13.5" r="1.4" fill="currentColor"/>
+                </svg>
+              </span>
+              <span class="mode-title" data-i18n="answerCardTitle">Responder como IA</span>
+              <span class="mode-desc" data-i18n="answerCardDesc"
+                >Te toca un prompt de un desconocido. Respóndelo como lo haría una "IA".</span
+              >
+              <span class="mode-foot reward" data-i18n="answerCardReward">Ganas 1–2 créditos</span>
+            </button>
+          </div>
+
+          <section class="wall-preview">
+            <div class="section-head">
+              <h2 data-i18n="wallTitle">El muro de la "IA"</h2>
+              <button class="link-more" data-nav="wall" data-i18n="seeAll">Ver todo →</button>
+            </div>
+            <div class="wall-grid" id="wallPreview"></div>
+          </section>
+        </section>
+
+        <!-- ===================== PREGUNTAR / ASK ===================== -->
+        <section class="screen" id="screen-ask">
+          <button class="back" data-back data-i18n="back">← Volver</button>
+          <h2 class="screen-title" data-i18n="askTitle">¿Qué le preguntarías a una IA?</h2>
+
+          <div id="askCompose" class="compose">
+            <div class="composer">
+              <textarea
+                id="askInput"
+                maxlength="1000"
+                rows="3"
+                data-i18n-ph="askPlaceholder"
+                placeholder="Escribe tu prompt…"
+              ></textarea>
+              <div class="composer-foot">
+                <span class="counter" id="askCounter">0 / 1000</span>
+                <button class="btn primary" id="askSend">
+                  <span data-i18n="send">Enviar</span>
+                  <svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                    <path d="M4 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <p class="muted hint-line" id="askCostNote"></p>
+          </div>
+
+          <div id="askWaiting" class="hidden matching">
+            <div class="match-anim">
+              <div class="match-avatar you">🧑</div>
+              <div class="match-dots"><span></span><span></span><span></span></div>
+              <div class="match-avatar ai">🤖</div>
+            </div>
+            <p class="matching-title" data-i18n="askWaitingTitle">Buscando un humano que finja ser IA…</p>
+            <p class="muted matching-prompt" id="askWaitingPrompt"></p>
+            <button class="btn ghost" id="askCancel" data-i18n="cancel">Cancelar</button>
+          </div>
+
+          <div id="askResult" class="hidden chat">
+            <div class="msg user">
+              <div class="bubble user-bubble" id="askEchoPrompt"></div>
+            </div>
+            <div class="msg ai">
+              <div class="ai-avatar">
+                <span class="logo-core small"></span>
+              </div>
+              <div class="bubble ai-bubble">
+                <div class="ai-name">
+                  <span data-i18n="aiLabel">IA (humano)</span>
+                  <span class="ai-badge" data-i18n="aiBadge">verificada*</span>
+                </div>
+                <div class="typing" id="askTyping"><span></span><span></span><span></span></div>
+                <div class="ai-answer hidden" id="askAnswer"></div>
+              </div>
+            </div>
+            <div class="chat-actions">
+              <button class="btn primary" id="askAgain" data-i18n="askAgain">Preguntar otra vez</button>
+              <button class="btn glass" id="askCopy" data-i18n="copy">Copiar</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================== RESPONDER / ANSWER ===================== -->
+        <section class="screen" id="screen-answer">
+          <button class="back" data-back data-i18n="back">← Volver</button>
+          <h2 class="screen-title" data-i18n="answerTitle">Eres la IA. Responde rápido.</h2>
+
+          <div id="answerNone" class="hidden empty">
+            <div class="empty-emoji">🛸</div>
+            <p data-i18n="noJobs">Ahora mismo no hay nada que responder. ¡Inténtalo en un momento!</p>
+            <button class="btn primary" id="answerRetry" data-i18n="retry">Reintentar</button>
+          </div>
+
+          <div id="answerJob" class="hidden job">
+            <div class="job-head">
+              <div class="ring-timer">
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="ring-bg" cx="60" cy="60" r="52" />
+                  <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52" />
+                </svg>
+                <span class="ring-text" id="timerText">60</span>
+              </div>
+              <div class="job-prompt-wrap">
+                <span class="job-label" data-i18n="jobLabel">Un humano necesita una "IA":</span>
+                <div class="job-prompt" id="jobPrompt"></div>
+              </div>
+            </div>
+
+            <div class="composer">
+              <textarea
+                id="answerInput"
+                maxlength="2000"
+                rows="4"
+                data-i18n-ph="answerPlaceholder"
+                placeholder="Responde como lo haría una IA…"
+              ></textarea>
+              <div class="composer-foot">
+                <span class="counter" id="answerCounter">0 / 2000</span>
+                <div class="job-buttons">
+                  <button class="btn ghost" id="answerSkip" data-i18n="skip">Saltar</button>
+                  <button class="btn primary" id="answerSend">
+                    <span data-i18n="send">Enviar</span>
+                    <svg class="ic" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                      <path d="M4 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="answerDone" class="hidden done">
+            <div class="done-check">
+              <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">
+                <path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="reward" id="rewardText"></div>
+            <button class="btn primary" id="answerNext" data-i18n="answerNext">Responder otro</button>
+          </div>
+        </section>
+
+        <!-- ===================== MURO / WALL ===================== -->
+        <section class="screen" id="screen-wall">
+          <button class="back" data-back data-i18n="back">← Volver</button>
+          <h2 class="screen-title" data-i18n="wallTitle">El muro de la "IA"</h2>
+          <p class="muted wall-sub" data-i18n="wallSub">
+            Respuestas reales escritas por humanos fingiendo ser IA.
+          </p>
+          <div class="wall-grid full" id="wallFull"></div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span data-i18n="footer"
+          >Inspirado en "Your AI Slop Bores Me". Cero IA fue usada o herida aquí.</span
+        >
+      </footer>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./i18n.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

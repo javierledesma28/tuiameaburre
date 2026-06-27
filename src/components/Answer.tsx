@@ -1,0 +1,210 @@
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { socket } from "../lib/socket";
+import { useGame } from "../game";
+import { useI18n } from "../i18n";
+
+type Phase = "loading" | "none" | "job" | "done";
+const R = 54;
+const C = 2 * Math.PI * R;
+
+export default function Answer() {
+  const { requestJob, submitAnswer, skipJob, go, toast, burst } = useGame();
+  const { t } = useI18n();
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [prompt, setPrompt] = useState("");
+  const [text, setText] = useState("");
+  const [reward, setReward] = useState("");
+  const [secs, setSecs] = useState(60);
+  const jobId = useRef<string | null>(null);
+  const timer = useRef<number | undefined>(undefined);
+  const deadline = useRef(0);
+  const totalSecs = useRef(60); // duración real del job, según el server
+  const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const stopTimer = () => {
+    if (timer.current) window.clearInterval(timer.current);
+    timer.current = undefined;
+  };
+
+  const startTimer = (dl: number, total: number) => {
+    stopTimer();
+    deadline.current = dl;
+    if (total > 0) totalSecs.current = total;
+    const tick = () => {
+      const remaining = Math.max(0, deadline.current - Date.now());
+      setSecs(Math.ceil(remaining / 1000));
+      if (remaining <= 0) stopTimer();
+    };
+    tick();
+    timer.current = window.setInterval(tick, 200);
+  };
+
+  const fetchJob = async () => {
+    setPhase("loading");
+    const res = await requestJob();
+    if (!res?.ok) return setPhase("none");
+    jobId.current = res.jobId;
+    setPrompt(res.prompt);
+    setText("");
+    setPhase("job");
+    startTimer(res.deadline, res.seconds);
+    window.setTimeout(() => taRef.current?.focus(), 60);
+  };
+
+  useEffect(() => {
+    fetchJob();
+    return stopTimer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const onExpired = ({ jobId: id }: any) => {
+      if (id !== jobId.current) return;
+      stopTimer();
+      jobId.current = null;
+      toast(t("expired"));
+      setPhase("none");
+    };
+    socket.on("jobExpired", onExpired);
+    return () => {
+      socket.off("jobExpired", onExpired);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t]);
+
+  const leave = () => {
+    if (jobId.current) skipJob(jobId.current);
+    jobId.current = null;
+    stopTimer();
+    go("home");
+  };
+
+  const submit = async () => {
+    if (!jobId.current) return;
+    const v = text.trim();
+    if (!v) return toast(t("emptyAnswer"));
+    const res = await submitAnswer(jobId.current, v);
+    if (!res?.ok) {
+      if (res?.error === "expired") {
+        stopTimer();
+        jobId.current = null;
+        toast(t("expired"));
+        return setPhase("none");
+      }
+      return toast(t("emptyAnswer"));
+    }
+    stopTimer();
+    jobId.current = null;
+    if (res.reward > 0) {
+      const fn = res.seed ? t("rewardSeed") : t("rewardMsg");
+      setReward((fn as any)(res.reward, res.credits));
+      burst();
+    } else {
+      // En el tope de créditos no se ganó nada: mensaje honesto, sin confeti.
+      setReward(t("rewardCapped"));
+    }
+    setPhase("done");
+  };
+
+  const skip = () => {
+    if (jobId.current) skipJob(jobId.current);
+    jobId.current = null;
+    stopTimer();
+    fetchJob();
+  };
+
+  const danger = secs <= 10;
+  const warn = secs <= 20 && secs > 10;
+  const ringColor = danger ? "#ff6f61" : warn ? "#ffc24b" : "#5fbf7d";
+  const frac = Math.max(0, Math.min(1, secs / totalSecs.current));
+
+  return (
+    <section className="mx-auto max-w-2xl px-5">
+      <button onClick={leave} className="font-hand text-xl text-muted hover:text-ink">
+        {t("back")}
+      </button>
+      <h2 className="mb-6 mt-2 font-marker text-3xl text-ink sm:text-4xl">{t("answerScreenTitle")}</h2>
+
+      <AnimatePresence mode="wait">
+        {phase === "none" && (
+          <motion.div key="n" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-12 text-center">
+            <div className="mb-3 text-5xl">🛸</div>
+            <p className="mx-auto max-w-sm font-hand text-2xl text-muted">{t("noJobs")}</p>
+            <button onClick={fetchJob} className="mt-6 rounded-[4px] bg-sticky-yellow px-5 py-2 font-marker text-base text-paper-ink shadow-note">
+              {t("retry")}
+            </button>
+          </motion.div>
+        )}
+
+        {phase === "job" && (
+          <motion.div key="j" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <div className="paper relative mb-5 flex items-center gap-5 rounded-[5px] p-5 shadow-note">
+              {/* temporizador dibujado / drawn timer */}
+              <div className="relative h-[84px] w-[84px] shrink-0">
+                <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
+                  <circle cx="60" cy="60" r={R} fill="none" stroke="rgba(44,36,25,0.15)" strokeWidth="9" />
+                  <circle
+                    cx="60" cy="60" r={R} fill="none" stroke={ringColor} strokeWidth="9" strokeLinecap="round"
+                    strokeDasharray={C} strokeDashoffset={C * (1 - frac)}
+                    style={{ transition: "stroke-dashoffset 0.3s linear, stroke 0.4s" }}
+                  />
+                </svg>
+                <span className={`absolute inset-0 grid place-items-center font-marker text-2xl ${danger ? "animate-pulse text-marker-red" : "text-paper-ink"}`}>
+                  {secs}
+                </span>
+              </div>
+              <div>
+                <span className="font-mono text-xs text-paper-ink/60">{t("jobLabel")}</span>
+                <p className="mt-1 font-hand text-2xl leading-tight text-paper-ink">{prompt}</p>
+              </div>
+            </div>
+
+            <div className="crt rounded-[5px] p-4 shadow-note">
+              <textarea
+                ref={taRef}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && submit()}
+                maxLength={2000}
+                rows={4}
+                placeholder={t("answerPlaceholder")}
+                className="w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-[#cdffe0] outline-none placeholder:text-[#8ff0b5]/40"
+              />
+              <div className="flex items-center justify-between pt-2">
+                <span className="font-mono text-[11px] text-[#8ff0b5]/50">
+                  {(t("counter") as any)(text.length, 2000)}
+                </span>
+                <div className="flex gap-2">
+                  <button onClick={skip} className="rounded-[4px] px-4 py-2 font-mono text-xs text-[#8ff0b5]/70 hover:text-[#8ff0b5]">
+                    {t("skip")}
+                  </button>
+                  <button onClick={submit} className="rounded-[4px] bg-[#5fbf7d] px-5 py-2 font-marker text-base text-[#0c1410] shadow-note">
+                    {t("send")} ▸
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === "done" && (
+          <motion.div key="d" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="py-12 text-center">
+            <motion.div
+              initial={{ scale: 0, rotate: -20 }}
+              animate={{ scale: 1, rotate: -4 }}
+              transition={{ type: "spring", stiffness: 260, damping: 14 }}
+              className="mx-auto mb-5 grid h-20 w-20 place-items-center rounded-full bg-sticky-green text-4xl text-paper-ink shadow-note"
+            >
+              ✓
+            </motion.div>
+            <p className="font-marker text-2xl text-lamp">{reward}</p>
+            <button onClick={fetchJob} className="mt-6 rounded-[4px] bg-sticky-green px-5 py-2 font-marker text-base text-paper-ink shadow-note">
+              {t("answerNext")}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
