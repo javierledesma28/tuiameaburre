@@ -53,6 +53,10 @@ export default function App() {
 
         <footer className="mx-auto max-w-3xl px-5 py-10 text-center font-hand text-lg text-muted/70">
           {t("footer")}
+          <div className="mt-3 flex justify-center gap-5 font-mono text-sm text-muted/50">
+            <a href="https://github.com/javierledesma28/tuiameaburre" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-muted/90">github</a>
+            <a href="https://linkedin.com/in/ledesmajavier" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-muted/90">linkedin</a>
+          </div>
         </footer>
       </div>
 
