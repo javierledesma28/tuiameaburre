@@ -5,7 +5,7 @@ type Lang = "es" | "en";
 
 const STRINGS: Record<Lang, Dict> = {
   es: {
-    brand: "Tu IA Mala Onda",
+    brand: "Tu IA me aburre",
     credits: "créditos",
     navHome: "Inicio",
     navWall: "El corcho",

@@ -24,7 +24,7 @@
 
 ## ¿Qué es esto?
 
-**Tu IA Mala Onda** es un experimento social disfrazado de juego:
+**Tu IA me aburre** es un experimento social disfrazado de juego:
 
 > 💬 Alguien escribe un prompt como si se lo diera a ChatGPT.  
 > 🤖 Otra persona —un humano real, en este momento— tiene **60 segundos** para responder *fingiendo* ser una IA.  

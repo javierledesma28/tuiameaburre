@@ -1,4 +1,4 @@
-// Tu IA Mala Onda — servidor de juego / game server
+// Tu IA me aburre — servidor de juego / game server
 // Express sirve el frontend estático y Socket.IO maneja el bucle en tiempo real:
 // los humanos envían prompts, otros humanos los responden haciéndose pasar por IA.
 import http from "node:http";
@@ -366,5 +366,5 @@ for (const f of SEED_FEED) {
 
 ensureSeeds();
 server.listen(PORT, () => {
-  console.log(`Tu IA Mala Onda escuchando en http://localhost:${PORT}`);
+  console.log(`Tu IA me aburre escuchando en http://localhost:${PORT}`);
 });
