@@ -81,10 +81,8 @@ export default function Creator() {
               <p className="font-mono text-xs text-paper-ink/40">📍 Santander, España</p>
               <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
                 {[
-                  { label: "t28.io", href: "https://t28.io" },
-                  { label: "azurehub.t28.io", href: "https://azurehub.t28.io" },
                   { label: "linkedin", href: "https://linkedin.com/in/ledesmajavier" },
-                  { label: "javierledesma.com.ar", href: "https://javierledesma.com.ar" },
+                  { label: "blog.javierledesma.com.ar", href: "https://blog.javierledesma.com.ar" },
                 ].map((l) => (
                   <a
                     key={l.label}
