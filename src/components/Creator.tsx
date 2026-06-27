@@ -120,6 +120,11 @@ export default function Creator() {
             La carrera universitaria sigue inconclusa. El datacenter nacional que coordinó en ARSAT sigue funcionando.
             Las prioridades están claras.
           </p>
+          <p>
+            No tiene la menor idea de qué es Proxmox, jamás escuchó hablar de Tailscale, y mucho menos
+            sabría sostener una conversación con un CTO. Todo lo que ves acá lo hizo de casualidad.
+            <span className="ml-1 text-sm text-muted/50">(esto es ironía, por las dudas)</span>
+          </p>
         </div>
       </motion.section>
 
