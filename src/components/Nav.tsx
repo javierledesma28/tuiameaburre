@@ -20,7 +20,7 @@ export default function Nav() {
     prevCredits.current = credits;
   }, [credits]);
 
-  const link = (id: "home" | "wall", label: string) => (
+  const link = (id: "home" | "wall" | "creator", label: string) => (
     <button
       onClick={() => go(id)}
       className={`font-hand text-2xl leading-none transition-transform hover:-rotate-2 ${
@@ -45,6 +45,7 @@ export default function Nav() {
       <nav className="ml-2 hidden gap-5 sm:flex">
         {link("home", t("navHome"))}
         {link("wall", t("navWall"))}
+        {link("creator", t("navCreator"))}
       </nav>
 
       <div className="ml-auto flex items-center gap-3">

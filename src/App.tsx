@@ -8,6 +8,7 @@ import Home from "./components/Home";
 import Ask from "./components/Ask";
 import Answer from "./components/Answer";
 import Wall from "./components/Wall";
+import Creator from "./components/Creator";
 import Confetti from "./components/Confetti";
 
 const SCREENS: Record<string, React.ComponentType> = {
@@ -15,6 +16,7 @@ const SCREENS: Record<string, React.ComponentType> = {
   ask: Ask,
   answer: Answer,
   wall: Wall,
+  creator: Creator,
 };
 
 export default function App() {

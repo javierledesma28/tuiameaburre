@@ -8,7 +8,7 @@ import {
 } from "react";
 import { socket, emitAck } from "./lib/socket";
 
-export type Screen = "home" | "ask" | "answer" | "wall";
+export type Screen = "home" | "ask" | "answer" | "wall" | "creator";
 export type FeedItem = { id: string; prompt: string; answer: string; ts: number };
 export type Stats = { online: number; totalAnswered: number; pending: number };
 

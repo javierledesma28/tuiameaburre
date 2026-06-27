@@ -9,6 +9,7 @@ const STRINGS: Record<Lang, Dict> = {
     credits: "créditos",
     navHome: "Inicio",
     navWall: "El corcho",
+    navCreator: "El Creador",
     badge: "sin redes neuronales · 100% humanos",
     heroTitle: "Tu IA me aburre.",
     heroSub:
@@ -73,6 +74,7 @@ const STRINGS: Record<Lang, Dict> = {
     credits: "credits",
     navHome: "Home",
     navWall: "The board",
+    navCreator: "The Creator",
     badge: "no neural networks · 100% humans",
     heroTitle: "Your AI bores me.",
     heroSub:
