@@ -8,7 +8,6 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
     function onMove(e: MouseEvent) {
       if (!ref.current) return;
       const rect = ref.current.getBoundingClientRect();
-      // Eye center in page-space (roughly top 38% of the SVG height)
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height * 0.38;
       const dx = e.clientX - cx;
@@ -40,6 +39,11 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
           <stop offset="0%" stopColor="#8ff0b5" stopOpacity="0.18" />
           <stop offset="100%" stopColor="#8ff0b5" stopOpacity="0" />
         </radialGradient>
+        {/* Vignette for face photo */}
+        <radialGradient id="mh-vignette" cx="60" cy="81" r="42" gradientUnits="userSpaceOnUse">
+          <stop offset="45%" stopColor="#071007" stopOpacity="0" />
+          <stop offset="100%" stopColor="#071007" stopOpacity="0.82" />
+        </radialGradient>
         {/* Scanlines pattern */}
         <pattern id="mh-scan" x="0" y="0" width="2" height="3" patternUnits="userSpaceOnUse">
           <rect width="2" height="1" fill="rgba(0,0,0,0.38)" />
@@ -60,19 +64,17 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
-        {/* CRT phosphor-green filter for face photo */}
+        {/* High-contrast phosphor-green CRT filter:
+            crushes blacks, boosts midtones, keeps whites bright */}
         <filter id="mh-face-crt" colorInterpolationFilters="sRGB">
           <feColorMatrix type="saturate" values="0" result="grey" />
-          <feColorMatrix
-            in="grey"
-            type="matrix"
-            values="0   0   0   0   0.05
-                    0.6 0.6 0.6 0   0.2
-                    0.1 0.1 0.1 0   0.05
-                    0   0   0   1   0"
-          />
+          <feComponentTransfer in="grey">
+            <feFuncR type="linear" slope="0" intercept="0.02" />
+            <feFuncG type="table" tableValues="0 0.02 0.4 0.85 1.0 1.0" />
+            <feFuncB type="linear" slope="0.06" intercept="0" />
+          </feComponentTransfer>
         </filter>
-        {/* Clip photo to screen bezel */}
+        {/* Clip to screen bezel */}
         <clipPath id="mh-screen-clip">
           <rect x="22" y="52" width="76" height="58" rx="5" />
         </clipPath>
@@ -80,43 +82,59 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
 
       {/* ── Antenna ── */}
       <line x1="60" y1="18" x2="60" y2="44" stroke="#5fbf7d" strokeWidth="2" strokeLinecap="round" />
-      {/* Blinking amber LED on top */}
       <circle cx="60" cy="14" r="5" fill="#ffb454" filter="url(#mh-led)" className="animate-twinkle" />
       <circle cx="60" cy="14" r="3" fill="#ffd280" className="animate-twinkle" />
 
       {/* ── Monitor shell ── */}
       <rect x="12" y="44" width="96" height="74" rx="10" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2.5" />
-      {/* Corner screws */}
       <circle cx="20" cy="52" r="2" fill="#2a4a2a" stroke="#5fbf7d" strokeWidth="1" />
       <circle cx="100" cy="52" r="2" fill="#2a4a2a" stroke="#5fbf7d" strokeWidth="1" />
       <circle cx="20" cy="110" r="2" fill="#2a4a2a" stroke="#5fbf7d" strokeWidth="1" />
       <circle cx="100" cy="110" r="2" fill="#2a4a2a" stroke="#5fbf7d" strokeWidth="1" />
 
-      {/* ── Screen bezel (inner) ── */}
+      {/* ── Screen ── */}
       <rect x="22" y="52" width="76" height="58" rx="5" fill="#071007" />
 
       {photoSrc ? (
         <>
-          {/* Face photo with phosphor-green CRT filter */}
-          <image
-            href={photoSrc}
-            x="22" y="52" width="76" height="58"
-            preserveAspectRatio="xMidYMid slice"
-            clipPath="url(#mh-screen-clip)"
-            filter="url(#mh-face-crt)"
-          />
-          {/* Scanlines + glow over photo */}
-          <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-scan)" opacity="0.55" />
+          {/* Face photo: high-contrast phosphor + clipped */}
+          <g clipPath="url(#mh-screen-clip)">
+            <image
+              href={photoSrc}
+              x="22" y="52" width="76" height="58"
+              preserveAspectRatio="xMidYMid slice"
+              filter="url(#mh-face-crt)"
+            />
+            {/* Vignette: darkens edges so face pops */}
+            <rect x="22" y="52" width="76" height="58" fill="url(#mh-vignette)" />
+            {/* Scanlines */}
+            <rect x="22" y="52" width="76" height="58" fill="url(#mh-scan)" opacity="0.4" />
+            {/* Animated scan bar */}
+            <rect x="22" y="52" width="76" height="2.5" fill="rgba(143,240,181,0.22)">
+              <animate attributeName="y" from="52" to="107" dur="3s" repeatCount="indefinite" calcMode="linear" />
+            </rect>
+          </g>
+
+          {/* Phosphor glow overlay */}
           <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-screen-glow)" />
+
+          {/* Corner detection brackets */}
+          <g filter="url(#mh-glow)" stroke="#8ff0b5" strokeWidth="1.5" strokeLinecap="round" fill="none">
+            <path d="M33 57 L27 57 L27 64" />
+            <path d="M87 57 L93 57 L93 64" />
+            <path d="M33 105 L27 105 L27 98" />
+            <path d="M87 105 L93 105 L93 98" />
+          </g>
+
+          {/* Scan label */}
+          <text x="60" y="60" textAnchor="middle" fill="#8ff0b5" fontSize="3.5" fontFamily="monospace" opacity="0.75" filter="url(#mh-glow)">◈ FACIAL SCAN ◈</text>
         </>
       ) : (
         <>
           <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-screen-glow)" />
           <rect x="22" y="52" width="76" height="58" rx="5" fill="url(#mh-scan)" opacity="0.55" />
-          {/* Screen curvature highlight */}
           <ellipse cx="60" cy="58" rx="28" ry="6" fill="rgba(143,240,181,0.04)" />
 
-          {/* ── Eyes (track cursor) ── */}
           <g filter="url(#mh-glow)">
             <ellipse cx="44" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
             <ellipse cx={44 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
@@ -129,7 +147,6 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
             <circle cx={75.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
           </g>
 
-          {/* Mouth / expression bar */}
           <path
             d="M 46 95 Q 60 104 74 95"
             fill="none"
@@ -143,7 +160,7 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
 
       {/* Power LED + brand badge */}
       <circle cx="84" cy="108" r="3.5" fill="#5fbf7d" filter="url(#mh-led)" className="animate-flicker" />
-      <text x="23" y="108" fill="#8ff0b5" fontSize="5.5" fontFamily="monospace" opacity="0.55">TUI</text>
+      {!photoSrc && <text x="23" y="108" fill="#8ff0b5" fontSize="5.5" fontFamily="monospace" opacity="0.55">TUI</text>}
 
       {/* ── Monitor base/stand ── */}
       <rect x="46" y="118" width="28" height="6" rx="3" fill="#142014" stroke="#5fbf7d" strokeWidth="1.5" />
@@ -154,26 +171,21 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
 
       {/* ── Torso ── */}
       <rect x="30" y="139" width="60" height="44" rx="7" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2.2" />
-      {/* Chest panel */}
       <rect x="40" y="147" width="40" height="26" rx="4" fill="#071007" stroke="#5fbf7d" strokeWidth="1" opacity="0.9" />
-      {/* Chest panel details */}
       <rect x="44" y="152" width="10" height="4" rx="2" fill="#8ff0b5" opacity="0.5" />
       <rect x="44" y="159" width="6" height="4" rx="2" fill="#ffb454" opacity="0.55" />
       <rect x="52" y="159" width="6" height="4" rx="2" fill="#ff6f61" opacity="0.45" />
       <text x="68" y="163" fill="#8ff0b5" fontSize="6" fontFamily="monospace" opacity="0.7">AI?</text>
 
       {/* ── Arms ── */}
-      {/* Left arm */}
       <line x1="30" y1="152" x2="10" y2="172" stroke="#5fbf7d" strokeWidth="4.5" strokeLinecap="round" />
       <circle cx="8" cy="175" r="5.5" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2" />
-      {/* Right arm */}
       <line x1="90" y1="152" x2="110" y2="172" stroke="#5fbf7d" strokeWidth="4.5" strokeLinecap="round" />
       <circle cx="112" cy="175" r="5.5" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2" />
 
       {/* ── Legs ── */}
       <line x1="50" y1="183" x2="46" y2="206" stroke="#5fbf7d" strokeWidth="5.5" strokeLinecap="round" />
       <line x1="70" y1="183" x2="74" y2="206" stroke="#5fbf7d" strokeWidth="5.5" strokeLinecap="round" />
-      {/* Feet */}
       <rect x="37" y="203" width="18" height="7" rx="3.5" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2" />
       <rect x="65" y="203" width="18" height="7" rx="3.5" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2" />
     </svg>
