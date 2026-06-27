@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { FeedItem } from "../game";
 import { useI18n } from "../i18n";
+import { MODEL_BY_ID } from "../models";
 
 const NOTE_BG = ["#ffe27a", "#ffb3c8", "#bdec8a", "#a9d8ff", "#f3e9d2"];
 const ROT = ["-2deg", "1.5deg", "-1deg", "2.5deg", "-2.5deg", "1deg"];
@@ -16,6 +17,7 @@ function hashId(id: string) {
 
 function Note({ item }: { item: FeedItem }) {
   const h = hashId(item.id);
+  const model = item.model ? MODEL_BY_ID[item.model] : null;
   return (
     <motion.div
       layout
@@ -32,6 +34,12 @@ function Note({ item }: { item: FeedItem }) {
         {item.prompt}
       </p>
       <p className="whitespace-pre-wrap font-hand text-xl leading-tight">{item.answer}</p>
+      {model && (
+        <p className="mt-3 flex items-center gap-1 font-mono text-[10px] text-paper-ink/45">
+          <span>{model.emoji}</span>
+          <span className="font-bold">{model.name}</span>
+        </p>
+      )}
     </motion.div>
   );
 }

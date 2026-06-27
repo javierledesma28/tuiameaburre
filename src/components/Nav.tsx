@@ -3,10 +3,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 
+type NavId = "home" | "wall" | "creator" | "account";
+
 export default function Nav() {
-  const { credits, creditCap, screen, go } = useGame();
+  const { credits, creditCap, screen, go, profile } = useGame();
   const { t, lang, toggle } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const accountLabel = profile?.nick ? `★ ${profile.nick}` : t("navLogin");
 
   // Resalte verde "ganaste créditos" SOLO cuando suben (no al gastarlos).
   const prevCredits = useRef(credits);
@@ -26,13 +30,13 @@ export default function Nav() {
     setMenuOpen(false);
   }, [screen]);
 
-  const navTo = (id: "home" | "wall" | "creator") => {
+  const navTo = (id: NavId) => {
     go(id);
     setMenuOpen(false);
   };
 
   // Links de escritorio (texto claro sobre el cuarto oscuro).
-  const link = (id: "home" | "wall" | "creator", label: string) => (
+  const link = (id: NavId, label: string) => (
     <button
       onClick={() => navTo(id)}
       className={`font-hand text-2xl leading-none transition-transform hover:-rotate-2 ${
@@ -45,7 +49,7 @@ export default function Nav() {
   );
 
   // Links del panel móvil (tinta oscura sobre papel crema).
-  const mobileLink = (id: "home" | "wall" | "creator", label: string) => (
+  const mobileLink = (id: NavId, label: string) => (
     <button
       onClick={() => navTo(id)}
       className={`text-left font-hand text-3xl leading-none transition-transform hover:translate-x-1 ${
@@ -72,6 +76,7 @@ export default function Nav() {
         {link("home", t("navHome"))}
         {link("wall", t("navWall"))}
         {link("creator", t("navCreator"))}
+        {link("account", accountLabel)}
       </nav>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -149,6 +154,7 @@ export default function Nav() {
                 {mobileLink("home", t("navHome"))}
                 {mobileLink("wall", t("navWall"))}
                 {mobileLink("creator", t("navCreator"))}
+                {mobileLink("account", accountLabel)}
               </div>
             </motion.div>
           </>

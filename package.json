@@ -16,6 +16,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "better-sqlite3": "^12.11.1",
     "express": "^4.19.2",
     "framer-motion": "^11.11.17",
     "lucide-react": "^0.460.0",

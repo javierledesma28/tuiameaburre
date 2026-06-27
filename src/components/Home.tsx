@@ -5,6 +5,7 @@ import Hero from "./Hero";
 import ModeCards from "./ModeCards";
 import StatsStrip from "./StatsStrip";
 import WallBoard from "./WallBoard";
+import BoostBanner from "./BoostBanner";
 
 export default function Home() {
   const { feed, go } = useGame();
@@ -15,6 +16,10 @@ export default function Home() {
 
       <div className="text-center">
         <StatsStrip />
+      </div>
+
+      <div className="mx-auto w-full max-w-2xl px-5">
+        <BoostBanner />
       </div>
 
       <ModeCards />

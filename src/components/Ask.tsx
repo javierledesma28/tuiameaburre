@@ -3,14 +3,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import { socket } from "../lib/socket";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
+import BoostBanner from "./BoostBanner";
 
 type Phase = "compose" | "waiting" | "result";
+const TONES = ["any", "gracioso", "serio", "poetico", "acido"];
 
 export default function Ask() {
-  const { ask, cancelAsk, go, toast, credits, askCost } = useGame();
+  const { ask, cancelAsk, go, toast, credits, askCost, boost } = useGame();
   const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>("compose");
   const [text, setText] = useState("");
+  const [tone, setTone] = useState("any");
   const [echo, setEcho] = useState("");
   const [answer, setAnswer] = useState("");
   const [typing, setTyping] = useState(false);
@@ -61,11 +64,13 @@ export default function Ask() {
     go("home");
   };
 
+  const free = boost?.team === "human";
+
   const submit = async () => {
     const v = text.trim();
     if (!v) return toast(t("emptyPrompt"));
-    if (credits < askCost) return toast(t("noCredits"));
-    const res = await ask(v);
+    if (!free && credits < askCost) return toast(t("noCredits"));
+    const res = await ask(v, tone);
     if (!res?.ok) return toast(res?.error === "no_credits" ? t("noCredits") : t("emptyPrompt"));
     pending.current = res.promptId;
     setEcho(v);
@@ -91,6 +96,7 @@ export default function Ask() {
       <AnimatePresence mode="wait">
         {phase === "compose" && (
           <motion.div key="c" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <BoostBanner only="human" className="mb-4" />
             <div className="paper rounded-[5px] p-4 shadow-note">
               <textarea
                 ref={taRef}
@@ -102,7 +108,31 @@ export default function Ask() {
                 placeholder={t("askPlaceholder")}
                 className="w-full resize-none bg-transparent font-hand text-2xl leading-snug text-paper-ink outline-none placeholder:text-paper-ink/40"
               />
-              <div className="flex items-center justify-between pt-2">
+
+              {/* tono opcional para el matchmaking / optional tone for matchmaking */}
+              <div className="border-t border-paper-ink/10 pt-2">
+                <p className="mb-1.5 font-mono text-[10px] uppercase tracking-widest text-paper-ink/40">
+                  {t("askToneLabel")}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {TONES.map((tn) => (
+                    <button
+                      key={tn}
+                      type="button"
+                      onClick={() => setTone(tn)}
+                      className={`rounded-full border px-2.5 py-0.5 font-hand text-base leading-none transition-colors ${
+                        tone === tn
+                          ? "border-marker-red bg-marker-red/10 text-marker-red"
+                          : "border-paper-ink/20 text-paper-ink/60 hover:border-paper-ink/50"
+                      }`}
+                    >
+                      {t("tone" + tn.charAt(0).toUpperCase() + tn.slice(1))}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-3">
                 <span className="font-mono text-xs text-paper-ink/50">
                   {(t("counter") as any)(text.length, 1000)}
                 </span>
@@ -114,7 +144,9 @@ export default function Ask() {
                 </button>
               </div>
             </div>
-            <p className="mt-3 font-hand text-lg text-muted">{(t("askCostNote") as any)(askCost)}</p>
+            <p className="mt-3 font-hand text-lg text-muted">
+              {free ? t("askFreeTag") : (t("askCostNote") as any)(askCost)}
+            </p>
           </motion.div>
         )}
 

@@ -1,6 +1,7 @@
 // Tu IA me aburre — servidor de juego / game server
 // Express sirve el frontend estático y Socket.IO maneja el bucle en tiempo real:
 // los humanos envían prompts, otros humanos los responden haciéndose pasar por IA.
+// El estado de jugadores y el muro persisten en SQLite (ver db.js).
 import http from "node:http";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -9,6 +10,19 @@ import crypto from "node:crypto";
 import express from "express";
 import { Server as SocketServer } from "socket.io";
 import { SEED_PROMPTS, SEED_FEED } from "./seeds.js";
+import { pickModel, MODEL_BY_ID } from "./models.js";
+import {
+  getUser as dbGetUser,
+  setCredits,
+  upsertProfile,
+  setPrefs as dbSetPrefs,
+  incAsked,
+  incAnswered,
+  isNickTaken,
+  pushAnswer,
+  recentAnswers as dbRecentAnswers,
+  answersCount,
+} from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 5050;
@@ -21,14 +35,17 @@ const ANSWER_REWARD_MAX = 2; // recompensa máxima por responder
 const CREDIT_CAP = 10; // tope de créditos / credit cap
 const ANSWER_SECONDS = 60; // tiempo para responder / time to answer
 const MIN_QUEUE = 4; // mantener al menos N prompts disponibles / keep at least N prompts
-
 const MAX_FEED = 40; // tamaño del muro / wall size
 
-// ---- Estado en memoria / In-memory state ----
-const users = new Map(); // clientId -> { credits }
-const queue = []; // prompts pendientes / pending prompts: { id, text, askerClientId, seed, createdAt }
-const activeJobs = new Map(); // jobId -> { prompt, responderSocketId, responderClientId, timer, deadline }
-const recentAnswers = []; // muro: { id, prompt, answer, ts } más recientes primero / wall, newest first
+// Balance: cuántos prompts reales en cola disparan el boost del equipo IA.
+// Balance: how many real queued prompts trigger the AI-team boost.
+const BOOST_AI_THRESHOLD = 3;
+const BOOST_MULT = 2;
+
+// ---- Estado en memoria (lo efímero) / In-memory state (the ephemeral bits) ----
+const queue = []; // prompts pendientes: { id, text, askerClientId, seed, tone, boostedAsk, createdAt }
+const activeJobs = new Map(); // jobId -> { prompt, responderSocketId, responderClientId, model, timer, deadline }
+const recentAnswers = []; // cache del muro (se hidrata desde la DB) / wall cache, hydrated from DB
 const clientSockets = new Map(); // clientId -> Set<socketId> (un cliente puede tener varias pestañas)
 const pendingDeliveries = new Map(); // clientId -> respuestas a entregar cuando se reconecte
 let totalAnswered = 0; // contador global / global counter
@@ -36,9 +53,50 @@ let totalAnswered = 0; // contador global / global counter
 const newId = () => crypto.randomBytes(8).toString("hex");
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
-function getUser(clientId) {
-  if (!users.has(clientId)) users.set(clientId, { credits: START_CREDITS });
-  return users.get(clientId);
+// ---- Usuarios (vía SQLite) / Users (via SQLite) ----
+const getUser = (clientId) => dbGetUser(clientId, START_CREDITS);
+// Suma (o resta) créditos respetando el tope; devuelve el saldo nuevo.
+function addCredits(clientId, delta) {
+  const u = getUser(clientId);
+  const credits = clamp(u.credits + delta, 0, CREDIT_CAP);
+  setCredits(clientId, credits);
+  return credits;
+}
+
+// Perfil público (solo si el usuario se dio de alta) / public profile.
+function profileOf(clientId) {
+  const u = getUser(clientId);
+  if (!u.nick && !u.email) return null;
+  return {
+    nick: u.nick,
+    email: u.email,
+    prefs: u.prefs,
+    gamesAsked: u.gamesAsked,
+    gamesAnswered: u.gamesAnswered,
+  };
+}
+
+// Estado del balance entre equipos / cross-team balance state.
+// pendingReal alto → falta gente respondiendo (boost IA).
+// pendingReal en cero → falta gente preguntando (boost humano).
+function computeBoost() {
+  const pending = pendingRealCount();
+  if (pending >= BOOST_AI_THRESHOLD) return { team: "ai", mult: BOOST_MULT };
+  if (pending === 0) return { team: "human", mult: BOOST_MULT };
+  return null;
+}
+
+// Construye el payload de estado para un cliente / builds the state payload.
+function stateFor(clientId) {
+  const u = getUser(clientId);
+  return {
+    credits: u.credits,
+    creditCap: CREDIT_CAP,
+    askCost: ASK_COST,
+    answerSeconds: ANSWER_SECONDS,
+    boost: computeBoost(),
+    profile: profileOf(clientId),
+  };
 }
 
 // Mapea qué sockets pertenecen a cada cliente. Resolvemos al usuario por su
@@ -83,18 +141,29 @@ function ensureSeeds() {
       text,
       askerClientId: "seed",
       seed: true,
+      tone: null,
+      boostedAsk: false,
       createdAt: Date.now(),
     });
   }
 }
 
 // Elige un prompt para que lo responda este cliente (no uno propio).
-// Prioriza prompts reales (con alguien esperando) sobre los semilla.
-// Picks a prompt for this client to answer (not their own); real prompts first.
+// Matchmaking suave: prioriza prompts reales cuyo "tono" coincida con la
+// preferencia del responder; luego cualquier real; luego semilla.
+// Soft matchmaking: real prompts matching the responder's tone first.
 function pickPromptFor(clientId) {
   ensureSeeds();
-  let idx = queue.findIndex((p) => !p.seed && p.askerClientId !== clientId);
-  if (idx === -1) idx = queue.findIndex((p) => p.askerClientId !== clientId);
+  const u = getUser(clientId);
+  const wantTone = u.prefs?.tone && u.prefs.tone !== "any" ? u.prefs.tone : null;
+  const others = (p) => p.askerClientId !== clientId;
+
+  let idx = -1;
+  if (wantTone) {
+    idx = queue.findIndex((p) => !p.seed && others(p) && p.tone === wantTone);
+  }
+  if (idx === -1) idx = queue.findIndex((p) => !p.seed && others(p));
+  if (idx === -1) idx = queue.findIndex((p) => others(p));
   if (idx === -1) return null;
   return queue.splice(idx, 1)[0];
 }
@@ -106,14 +175,11 @@ function pendingRealCount() {
 // ---- HTTP + Socket.IO ----
 const app = express();
 // En producción servimos el build de Vite (/dist); si no existe, /public.
-// In production we serve the Vite build (/dist); otherwise /public.
 const distDir = path.join(__dirname, "dist");
 const staticDir = fs.existsSync(distDir) ? distDir : path.join(__dirname, "public");
 app.use(express.static(staticDir));
 app.get("/health", (_req, res) => res.json({ ok: true, queue: queue.length }));
 // Fallback SPA: cualquier ruta desconocida sirve index.html.
-// Excluimos /socket.io y /assets para que un asset hasheado que no exista
-// (p. ej. tras un deploy a medias) devuelva 404 limpio y no el HTML.
 app.get(/^(?!\/(?:socket\.io|assets)).*/, (_req, res, next) => {
   const indexFile = path.join(staticDir, "index.html");
   if (fs.existsSync(indexFile)) res.sendFile(indexFile);
@@ -126,67 +192,56 @@ const io = new SocketServer(server);
 function sendState(socket) {
   const clientId = socket.data.clientId;
   if (!clientId) return;
-  socket.emit("state", {
-    credits: getUser(clientId).credits,
-    creditCap: CREDIT_CAP,
-    askCost: ASK_COST,
-    answerSeconds: ANSWER_SECONDS,
-  });
+  socket.emit("state", stateFor(clientId));
 }
 
-// Igual que sendState pero por clientId (a todas sus pestañas, aunque el evento
-// lo dispare otro socket, p. ej. un reembolso mientras el asker está en otra vista).
+// Igual que sendState pero por clientId (a todas sus pestañas).
 function sendStateToClient(clientId) {
-  emitToClient(clientId, "state", {
-    credits: getUser(clientId).credits,
-    creditCap: CREDIT_CAP,
-    askCost: ASK_COST,
-    answerSeconds: ANSWER_SECONDS,
-  });
+  emitToClient(clientId, "state", stateFor(clientId));
 }
 
-// Difunde estadísticas globales a todos / broadcast global stats to everyone.
+// Difunde estadísticas globales (incluye el estado del boost) a todos.
 function broadcastStats() {
   io.emit("stats", {
     online: io.engine.clientsCount,
     totalAnswered,
     pending: pendingRealCount(),
+    boost: computeBoost(),
   });
 }
 
-// Añade una respuesta al muro y la difunde / add an answer to the wall and broadcast.
-function pushFeed(prompt, answer) {
-  const item = { id: newId(), prompt, answer, ts: Date.now() };
+// Añade una respuesta al muro (memoria + DB) y la difunde.
+function pushFeed(prompt, answer, model) {
+  const item = { id: newId(), prompt, answer, model: model || null, ts: Date.now() };
   recentAnswers.unshift(item);
   if (recentAnswers.length > MAX_FEED) recentAnswers.pop();
+  pushAnswer(item, MAX_FEED);
   totalAnswered++;
   io.emit("feed:new", item);
 }
 
 // Devuelve un prompt a la cola (p.ej. al saltar o agotar el tiempo).
-// Returns a prompt to the queue (e.g. on skip or timeout).
 function requeue(prompt) {
   if (prompt.seed) return;
-  // Reencolamos solo si el que preguntó sigue conectado (por clientId, no socket.id).
   if (!isClientOnline(prompt.askerClientId)) {
-    // Se fue de verdad: le devolvemos el crédito y descartamos el prompt.
-    refundAsk(prompt.askerClientId);
+    refundAsk(prompt); // se fue: devolvemos crédito (si correspondía) y descartamos
     return;
   }
   prompt.createdAt = Date.now();
-  queue.unshift(prompt); // al frente para que se atienda pronto / to the front
+  queue.unshift(prompt); // al frente para que se atienda pronto
 }
 
 // Devuelve el crédito de una pregunta (cancelación o prompt descartado).
-function refundAsk(clientId) {
-  if (!clientId || clientId === "seed") return;
-  const u = getUser(clientId);
-  u.credits = clamp(u.credits + ASK_COST, 0, CREDIT_CAP);
+// Si la pregunta fue gratis (boost humano), no hay nada que devolver.
+function refundAsk(prompt) {
+  const clientId = typeof prompt === "string" ? prompt : prompt?.askerClientId;
+  const free = typeof prompt === "object" && prompt?.boostedAsk;
+  if (!clientId || clientId === "seed" || free) return;
+  addCredits(clientId, ASK_COST);
   sendStateToClient(clientId);
 }
 
-// Entrega la respuesta al que preguntó; si está desconectado (recargó la página),
-// la guarda para dársela en cuanto se reconecte.
+// Entrega la respuesta al que preguntó; si está desconectado, la guarda.
 function deliverAnswer(clientId, payload) {
   if (emitToClient(clientId, "answerReceived", payload)) return;
   const arr = pendingDeliveries.get(clientId) || [];
@@ -211,19 +266,44 @@ function clearJob(jobId) {
 
 io.on("connection", (socket) => {
   socket.on("hello", (payload = {}) => {
-    // El cliente persiste su id en localStorage para conservar créditos al recargar.
-    // Client persists its id in localStorage to keep credits across reloads.
     const clientId =
       typeof payload.clientId === "string" && payload.clientId.length >= 8
         ? payload.clientId.slice(0, 64)
         : newId();
     socket.data.clientId = clientId;
     addClientSocket(clientId, socket.id);
-    getUser(clientId);
+    getUser(clientId); // crea la fila si es nuevo
     socket.emit("welcome", { clientId });
     sendState(socket);
-    flushDeliveries(clientId); // entrega respuestas que llegaron mientras no estaba
+    flushDeliveries(clientId);
     broadcastStats();
+  });
+
+  // --- Alta / actualización de cuenta / register or update account ---
+  socket.on("register", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const nick = String(payload.nick || "").trim().slice(0, 24);
+    const email = String(payload.email || "").trim().slice(0, 120);
+    if (nick.length < 2) return ack?.({ ok: false, error: "bad_nick" });
+    // Email opcional pero, si viene, mínimamente válido.
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+      return ack?.({ ok: false, error: "bad_email" });
+    if (isNickTaken(nick, clientId)) return ack?.({ ok: false, error: "nick_taken" });
+
+    const prefs = sanitizePrefs(payload.prefs);
+    upsertProfile(clientId, { email: email || null, nick, prefs }, START_CREDITS);
+    sendState(socket);
+    ack?.({ ok: true, profile: profileOf(clientId) });
+  });
+
+  socket.on("updatePrefs", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const prefs = sanitizePrefs(payload.prefs);
+    dbSetPrefs(clientId, prefs, START_CREDITS);
+    sendState(socket);
+    ack?.({ ok: true, profile: profileOf(clientId) });
   });
 
   // --- Modo humano: preguntar / Human mode: ask ---
@@ -233,20 +313,31 @@ io.on("connection", (socket) => {
     const text = String(payload.text || "").trim().slice(0, 1000);
     if (!text) return ack?.({ ok: false, error: "empty" });
 
-    const user = getUser(clientId);
-    if (user.credits < ASK_COST) return ack?.({ ok: false, error: "no_credits" });
+    // Boost humano: cuando no hay prompts reales esperando, preguntar es gratis.
+    const boost = computeBoost();
+    const free = boost?.team === "human";
 
-    user.credits -= ASK_COST;
+    const user = getUser(clientId);
+    if (!free && user.credits < ASK_COST)
+      return ack?.({ ok: false, error: "no_credits" });
+
+    if (!free) addCredits(clientId, -ASK_COST);
+    incAsked(clientId);
+
+    const tone = sanitizeTone(payload.tone);
     const prompt = {
       id: newId(),
       text,
       askerClientId: clientId,
       seed: false,
+      tone,
+      boostedAsk: free,
       createdAt: Date.now(),
     };
     queue.push(prompt);
     sendState(socket);
-    ack?.({ ok: true, promptId: prompt.id });
+    broadcastStats();
+    ack?.({ ok: true, promptId: prompt.id, free });
   });
 
   // Cancelar una pregunta que aún espera respuesta / cancel a still-pending ask.
@@ -254,10 +345,10 @@ io.on("connection", (socket) => {
     const clientId = socket.data.clientId;
     const i = queue.findIndex((p) => p.id === payload.promptId);
     if (i === -1) return;
-    // Solo el dueño puede cancelar su propio prompt (ni uno ajeno ni semilla).
     if (queue[i].seed || queue[i].askerClientId !== clientId) return;
-    queue.splice(i, 1);
-    refundAsk(clientId); // devolver el crédito (refundAsk ya reenvía el estado)
+    const [prompt] = queue.splice(i, 1);
+    refundAsk(prompt);
+    broadcastStats();
   });
 
   // --- Modo IA: pedir algo que responder / AI mode: request a job ---
@@ -265,8 +356,17 @@ io.on("connection", (socket) => {
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
 
+    // Congelamos el boost ANTES de sacar el prompt: si lo evaluáramos después,
+    // la cola ya bajó y el boost que motivó a responder desaparecería.
+    // Snapshot the boost BEFORE pulling the prompt (the queue drops afterwards).
+    const boostAtPick = computeBoost();
+
     const prompt = pickPromptFor(clientId);
     if (!prompt) return ack?.({ ok: false, error: "no_jobs" });
+
+    // El humano "encarna" un modelo: su favorito si lo eligió, si no aleatorio.
+    const u = getUser(clientId);
+    const model = pickModel(u.prefs?.favModel);
 
     const jobId = newId();
     const deadline = Date.now() + ANSWER_SECONDS * 1000;
@@ -276,29 +376,38 @@ io.on("connection", (socket) => {
       requeue(job.prompt);
       socket.emit("jobExpired", { jobId });
       sendState(socket);
+      broadcastStats();
     }, ANSWER_SECONDS * 1000 + 500);
 
     activeJobs.set(jobId, {
       prompt,
       responderSocketId: socket.id,
       responderClientId: clientId,
+      model,
+      boost: boostAtPick,
       timer,
       deadline,
     });
 
+    broadcastStats(); // la cola cambió → puede cambiar el boost
     ack?.({
       ok: true,
       jobId,
       prompt: prompt.text,
       seconds: ANSWER_SECONDS,
       deadline,
+      model, // el modelo que debe "encarnar"
+      boost: boostAtPick,
     });
   });
 
   // Saltar un prompt sin responder / skip a job without answering.
   socket.on("skipJob", (payload = {}) => {
     const job = clearJob(payload.jobId);
-    if (job) requeue(job.prompt);
+    if (job) {
+      requeue(job.prompt);
+      broadcastStats();
+    }
   });
 
   // Enviar la respuesta "de la IA" / submit the "AI" answer.
@@ -315,29 +424,41 @@ io.on("connection", (socket) => {
       return ack?.({ ok: false, error: "empty" });
     }
 
-    // Recompensa al respondedor (tope CREDIT_CAP).
-    const reward =
+    // Recompensa base + boost del equipo IA (el congelado al tomar el job).
+    const aiBoost = job.boost?.team === "ai" ? job.boost.mult : 1;
+    const base =
       ANSWER_REWARD_MIN +
       Math.floor(Math.random() * (ANSWER_REWARD_MAX - ANSWER_REWARD_MIN + 1));
-    const user = getUser(clientId);
-    const before = user.credits;
-    user.credits = clamp(user.credits + reward, 0, CREDIT_CAP);
-    const gained = user.credits - before; // recompensa real aplicada (0 si está en el tope)
+    const reward = base * aiBoost;
+
+    const before = getUser(clientId).credits;
+    const after = addCredits(clientId, reward);
+    const gained = after - before; // real aplicado (0 si tocó el tope)
+    incAnswered(clientId);
+
+    const modelId = job.model?.id || null;
 
     // Entrega la respuesta a quien preguntó (ahora o cuando se reconecte).
-    // Deliver the answer to the asker (now, or when they reconnect).
     if (!job.prompt.seed) {
       deliverAnswer(job.prompt.askerClientId, {
         promptId: job.prompt.id,
         prompt: job.prompt.text,
         answer,
+        model: modelId,
       });
     }
 
-    pushFeed(job.prompt.text, answer);
+    pushFeed(job.prompt.text, answer, modelId);
     broadcastStats();
     sendState(socket);
-    ack?.({ ok: true, reward: gained, credits: user.credits, seed: job.prompt.seed });
+    ack?.({
+      ok: true,
+      reward: gained,
+      credits: after,
+      seed: job.prompt.seed,
+      boosted: aiBoost > 1,
+      model: job.model || null,
+    });
   });
 
   // Envía el muro inicial / send the initial wall.
@@ -348,7 +469,6 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     if (socket.data.clientId) removeClientSocket(socket.data.clientId, socket.id);
-    // Libera cualquier job activo de este socket y reencola sus prompts.
     for (const [jobId, job] of activeJobs) {
       if (job.responderSocketId === socket.id) {
         clearJob(jobId);
@@ -359,10 +479,32 @@ io.on("connection", (socket) => {
   });
 });
 
-// Prepobla el muro con ejemplos / prefill the wall with examples.
-for (const f of SEED_FEED) {
-  recentAnswers.push({ id: newId(), prompt: f.prompt, answer: f.answer, ts: Date.now() });
+// Normaliza preferencias entrantes / sanitize incoming prefs.
+const TONES = ["any", "gracioso", "serio", "poetico", "acido"];
+const LANGS = ["any", "es", "en"];
+function sanitizePrefs(prefs) {
+  if (!prefs || typeof prefs !== "object") return null;
+  const tone = TONES.includes(prefs.tone) ? prefs.tone : "any";
+  const lang = LANGS.includes(prefs.lang) ? prefs.lang : "any";
+  const favModel = MODEL_BY_ID[prefs.favModel] ? prefs.favModel : null;
+  return { tone, lang, favModel };
 }
+function sanitizeTone(tone) {
+  return TONES.includes(tone) && tone !== "any" ? tone : null;
+}
+
+// Hidrata el muro desde la DB; si está vacío, lo prepobla con ejemplos.
+// Hydrate the wall from the DB; if empty, prefill with examples.
+if (answersCount() === 0) {
+  for (const f of SEED_FEED) {
+    pushAnswer(
+      { id: newId(), prompt: f.prompt, answer: f.answer, model: null, ts: Date.now() },
+      MAX_FEED
+    );
+  }
+}
+for (const row of dbRecentAnswers(MAX_FEED)) recentAnswers.push(row);
+totalAnswered = recentAnswers.length;
 
 ensureSeeds();
 server.listen(PORT, () => {

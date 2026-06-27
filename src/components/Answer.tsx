@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { socket } from "../lib/socket";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
+import { Model } from "../models";
+import BoostBanner from "./BoostBanner";
 
 type Phase = "loading" | "none" | "job" | "done";
 const R = 54;
@@ -16,6 +18,7 @@ export default function Answer() {
   const [text, setText] = useState("");
   const [reward, setReward] = useState("");
   const [secs, setSecs] = useState(60);
+  const [model, setModel] = useState<Model | null>(null);
   const jobId = useRef<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const deadline = useRef(0);
@@ -46,6 +49,7 @@ export default function Answer() {
     if (!res?.ok) return setPhase("none");
     jobId.current = res.jobId;
     setPrompt(res.prompt);
+    setModel(res.model || null);
     setText("");
     setPhase("job");
     startTimer(res.deadline, res.seconds);
@@ -97,7 +101,7 @@ export default function Answer() {
     stopTimer();
     jobId.current = null;
     if (res.reward > 0) {
-      const fn = res.seed ? t("rewardSeed") : t("rewardMsg");
+      const fn = res.boosted ? t("rewardBoosted") : res.seed ? t("rewardSeed") : t("rewardMsg");
       setReward((fn as any)(res.reward, res.credits));
       burst();
     } else {
@@ -139,6 +143,35 @@ export default function Answer() {
 
         {phase === "job" && (
           <motion.div key="j" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+            <BoostBanner only="ai" className="mb-4" />
+
+            {/* El modelo que "encarnás" / the model you're embodying */}
+            {model && (
+              <div
+                className="mb-4 flex items-start gap-3 rounded-[6px] border-2 p-3"
+                style={{ borderColor: `${model.accent}66`, background: `${model.accent}12` }}
+              >
+                <span
+                  className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-2xl"
+                  style={{ background: `${model.accent}22` }}
+                >
+                  {model.emoji}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted/60">
+                    {t("embodyLabel")}
+                  </p>
+                  <p className="font-marker text-lg leading-tight" style={{ color: model.accent }}>
+                    {model.name}
+                  </p>
+                  <p className="mt-0.5 font-hand text-base leading-tight text-muted">
+                    <span className="text-muted/60">{t("modelHintLabel")} </span>
+                    {model.persona}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="paper relative mb-5 flex items-center gap-5 rounded-[5px] p-5 shadow-note">
               {/* temporizador dibujado / drawn timer */}
               <div className="relative h-[84px] w-[84px] shrink-0">
