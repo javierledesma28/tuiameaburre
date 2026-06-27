@@ -12,7 +12,7 @@ function FairyLights() {
     <svg
       viewBox="0 0 1200 110"
       preserveAspectRatio="none"
-      className="absolute left-0 top-0 h-[110px] w-full"
+      className="absolute left-0 top-0 h-[110px] w-full overflow-hidden"
     >
       <path
         d="M0 22 Q 150 70 300 30 T 600 30 T 900 30 T 1200 26"

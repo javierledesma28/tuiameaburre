@@ -12,6 +12,13 @@ body,
   height: 100%;
 }
 
+/* Evita el scroll horizontal por elementos decorativos del fondo que se salen
+   unos píxeles. Aplicarlo en <html> se propaga al viewport sin romper el
+   header sticky (caso especial html/body). */
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   /* Cuarto a oscuras con una lámpara cálida en la esquina superior derecha. */

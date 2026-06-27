@@ -51,7 +51,7 @@ export default function App() {
           </AnimatePresence>
         </main>
 
-        <footer className="mx-auto max-w-3xl px-5 py-10 text-center font-hand text-lg text-muted/70">
+        <footer className="mx-auto max-w-3xl px-5 py-10 text-center font-hand text-base text-muted/70 sm:text-lg">
           {t("footer")}
           <div className="mt-3 flex justify-center gap-5 font-mono text-sm text-muted/50">
             <a href="https://github.com/javierledesma28/tuiameaburre" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-muted/90">github</a>
@@ -68,7 +68,7 @@ export default function App() {
             initial={{ opacity: 0, y: 24, x: "-50%" }}
             animate={{ opacity: 1, y: 0, x: "-50%" }}
             exit={{ opacity: 0, y: 24, x: "-50%" }}
-            className="fixed bottom-7 left-1/2 z-[70] -rotate-1 rounded-[4px] bg-paper px-5 py-3 font-hand text-lg text-paper-ink shadow-lift"
+            className="fixed bottom-7 left-1/2 z-[70] max-w-[90vw] -rotate-1 rounded-[4px] bg-paper px-5 py-3 text-center font-hand text-lg text-paper-ink shadow-lift"
           >
             {toastMsg}
           </motion.div>

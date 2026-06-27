@@ -10,7 +10,7 @@ export default function Home() {
   const { feed, go } = useGame();
   const { t } = useI18n();
   return (
-    <div className="flex flex-col gap-14 pb-16">
+    <div className="flex flex-col gap-10 pb-16 sm:gap-14">
       <Hero />
 
       <div className="text-center">

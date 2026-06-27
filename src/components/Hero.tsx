@@ -74,7 +74,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7 }}
-            className="mx-auto mt-5 max-w-3xl font-marker text-5xl leading-[0.95] text-ink text-shadow-ink sm:text-7xl md:mx-0"
+            className="mx-auto mt-5 max-w-3xl font-marker text-4xl leading-[0.95] text-ink text-shadow-ink sm:text-6xl md:mx-0 md:text-7xl"
           >
             {t("heroTitle")}
           </motion.h1>

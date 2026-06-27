@@ -28,20 +28,20 @@ export default function StatsStrip() {
   const { stats } = useGame();
   const { t } = useI18n();
   const item = (value: number, label: string) => (
-    <div className="flex flex-col items-center px-4">
-      <span className="font-marker text-3xl text-lamp">
+    <div className="flex flex-col items-center px-2.5 sm:px-4">
+      <span className="font-marker text-2xl text-lamp sm:text-3xl">
         <Count value={value} />
       </span>
-      <span className="font-hand text-lg text-paper-ink/70">{label}</span>
+      <span className="text-center font-hand text-sm leading-tight text-paper-ink/70 sm:text-lg">{label}</span>
     </div>
   );
   return (
-    <div className="paper relative mx-auto inline-flex -rotate-1 items-center rounded-[4px] px-3 py-2 shadow-note">
+    <div className="paper relative mx-auto inline-flex max-w-[92vw] -rotate-1 items-center rounded-[4px] px-2 py-2 shadow-note sm:px-3">
       <span className="tape" style={{ left: "50%", top: -11, transform: "translateX(-50%) rotate(2deg)" }} />
       {item(stats.online, t("statOnline"))}
-      <span className="h-9 w-px bg-paper-ink/15" />
+      <span className="h-8 w-px shrink-0 bg-paper-ink/15 sm:h-9" />
       {item(stats.totalAnswered, t("statAnswered"))}
-      <span className="h-9 w-px bg-paper-ink/15" />
+      <span className="h-8 w-px shrink-0 bg-paper-ink/15 sm:h-9" />
       {item(stats.pending, t("statPending"))}
     </div>
   );
