@@ -37,19 +37,25 @@ export default function Hero() {
   const robot = profile?.prefs?.robot;
   const { displayed, done } = useTypewriter(t("heroTyped"));
 
-  // Parallax/scrub por mouse (sin video): mueve el glow y la grilla retro.
+  // Parallax/scrub por mouse (sin video): mueve el glow, la grilla y el robot.
   const [mx, setMx] = useState(50);
+  const [my, setMy] = useState(50);
   const [gx, setGx] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
   useEffect(() => {
     function onMove(e: MouseEvent) {
       const w = window.innerWidth || 1;
+      const h = window.innerHeight || 1;
       setMx((e.clientX / w) * 100);
+      setMy((e.clientY / h) * 100);
       setGx((e.clientX / w - 0.5) * -40);
     }
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
   }, []);
+
+  // Inclinación 3D del robot hacia el cursor (además del seguimiento de ojos).
+  const robotTilt = `perspective(700px) rotateY(${(mx / 100 - 0.5) * 22}deg) rotateX(${-(my / 100 - 0.5) * 16}deg) translateX(${(mx / 100 - 0.5) * 18}px)`;
 
   // Los botones aparecen 400ms después de cargar, sin esperar al typewriter.
   const [pillsIn, setPillsIn] = useState(false);
@@ -176,12 +182,19 @@ export default function Hero() {
             className="pointer-events-none absolute inset-0"
             style={{ background: "radial-gradient(45% 40% at 55% 45%, rgba(143,240,181,0.22), transparent 70%)" }}
           />
-          <MonitorHead
-            className="relative w-44 animate-float sm:w-52 md:w-60 lg:w-72"
-            eye={robot?.eye}
-            led={robot?.led}
-            hat={robot?.hat || undefined}
-          />
+          {/* bob vertical (animate-float) y, adentro, inclinación 3D hacia el cursor */}
+          <div className="relative animate-float">
+            <div
+              style={{ transform: robotTilt, transformStyle: "preserve-3d", transition: "transform 0.18s ease-out", willChange: "transform" }}
+            >
+              <MonitorHead
+                className="w-44 sm:w-52 md:w-60 lg:w-72"
+                eye={robot?.eye}
+                led={robot?.led}
+                hat={robot?.hat || undefined}
+              />
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>
