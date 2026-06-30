@@ -16,12 +16,15 @@ import {
   setCredits,
   upsertProfile,
   setPrefs as dbSetPrefs,
+  setCountry,
   incAsked,
   incAnswered,
   isNickTaken,
   pushAnswer,
   recentAnswers as dbRecentAnswers,
   answersCount,
+  myReactions,
+  react as dbReact,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,9 +74,22 @@ function profileOf(clientId) {
     nick: u.nick,
     email: u.email,
     prefs: u.prefs,
+    sex: u.sex,
+    country: u.country,
     gamesAsked: u.gamesAsked,
     gamesAnswered: u.gamesAnswered,
+    coronasHuman: u.coronasHuman,
+    coronasAi: u.coronasAi,
   };
+}
+
+// Código de país desde el header de Cloudflare (si está habilitado IP Geolocation).
+function countryFromSocket(socket) {
+  const c = socket.handshake?.headers?.["cf-ipcountry"];
+  if (!c || typeof c !== "string") return null;
+  const up = c.toUpperCase();
+  // CF usa "XX"/"T1" para desconocido/Tor.
+  return /^[A-Z]{2}$/.test(up) && up !== "XX" && up !== "T1" ? up : null;
 }
 
 // Estado del balance entre equipos / cross-team balance state.
@@ -96,6 +112,7 @@ function stateFor(clientId) {
     answerSeconds: ANSWER_SECONDS,
     boost: computeBoost(),
     profile: profileOf(clientId),
+    coronas: { human: u.coronasHuman, ai: u.coronasAi },
   };
 }
 
@@ -211,8 +228,19 @@ function broadcastStats() {
 }
 
 // Añade una respuesta al muro (memoria + DB) y la difunde.
-function pushFeed(prompt, answer, model) {
-  const item = { id: newId(), prompt, answer, model: model || null, ts: Date.now() };
+function pushFeed(prompt, answer, model, authorClientId) {
+  const item = {
+    id: newId(),
+    prompt,
+    answer,
+    model: model || null,
+    authorClientId: authorClientId || null,
+    rUp: 0,
+    rBot: 0,
+    rMeh: 0,
+    rSkull: 0,
+    ts: Date.now(),
+  };
   recentAnswers.unshift(item);
   if (recentAnswers.length > MAX_FEED) recentAnswers.pop();
   pushAnswer(item, MAX_FEED);
@@ -273,6 +301,7 @@ io.on("connection", (socket) => {
     socket.data.clientId = clientId;
     addClientSocket(clientId, socket.id);
     getUser(clientId); // crea la fila si es nuevo
+    setCountry(clientId, countryFromSocket(socket), START_CREDITS); // país por IP (Cloudflare)
     socket.emit("welcome", { clientId });
     sendState(socket);
     flushDeliveries(clientId);
@@ -292,7 +321,8 @@ io.on("connection", (socket) => {
     if (isNickTaken(nick, clientId)) return ack?.({ ok: false, error: "nick_taken" });
 
     const prefs = sanitizePrefs(payload.prefs);
-    upsertProfile(clientId, { email: email || null, nick, prefs }, START_CREDITS);
+    const sex = sanitizeSex(payload.sex);
+    upsertProfile(clientId, { email: email || null, nick, prefs, sex }, START_CREDITS);
     sendState(socket);
     ack?.({ ok: true, profile: profileOf(clientId) });
   });
@@ -301,9 +331,34 @@ io.on("connection", (socket) => {
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const prefs = sanitizePrefs(payload.prefs);
-    dbSetPrefs(clientId, prefs, START_CREDITS);
+    const sex = sanitizeSex(payload.sex);
+    dbSetPrefs(clientId, prefs, sex, START_CREDITS);
     sendState(socket);
     ack?.({ ok: true, profile: profileOf(clientId) });
+  });
+
+  // --- Reaccionar a una nota del muro / react to a wall note ---
+  socket.on("react", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const type = String(payload.type || "");
+    if (!["up", "bot", "meh", "skull"].includes(type))
+      return ack?.({ ok: false, error: "bad_type" });
+
+    const res = dbReact(payload.answerId, clientId, type);
+    if (!res) return ack?.({ ok: false, error: "not_found" });
+    if (res.selfVote) return ack?.({ ok: false, error: "self_vote", my: res.my });
+
+    // Difunde los contadores nuevos a todos; al autor le refrescamos sus coronas.
+    io.emit("feed:react", {
+      id: res.answer.id,
+      rUp: res.answer.rUp,
+      rBot: res.answer.rBot,
+      rMeh: res.answer.rMeh,
+      rSkull: res.answer.rSkull,
+    });
+    if (res.answer.authorClientId) sendStateToClient(res.answer.authorClientId);
+    ack?.({ ok: true, my: res.my, answer: res.answer });
   });
 
   // --- Modo humano: preguntar / Human mode: ask ---
@@ -448,7 +503,7 @@ io.on("connection", (socket) => {
       });
     }
 
-    pushFeed(job.prompt.text, answer, modelId);
+    pushFeed(job.prompt.text, answer, modelId, clientId);
     broadcastStats();
     sendState(socket);
     ack?.({
@@ -461,9 +516,13 @@ io.on("connection", (socket) => {
     });
   });
 
-  // Envía el muro inicial / send the initial wall.
+  // Envía el muro inicial + las reacciones propias del cliente.
   socket.on("getFeed", () => {
-    socket.emit("feed:init", recentAnswers);
+    const clientId = socket.data.clientId;
+    socket.emit("feed:init", {
+      items: recentAnswers,
+      myReactions: clientId ? myReactions(clientId) : {},
+    });
     broadcastStats();
   });
 
@@ -491,6 +550,10 @@ function sanitizePrefs(prefs) {
 }
 function sanitizeTone(tone) {
   return TONES.includes(tone) && tone !== "any" ? tone : null;
+}
+const SEXES = ["m", "f", "nb", "na"]; // masculino, femenino, no binario, no aclara
+function sanitizeSex(sex) {
+  return SEXES.includes(sex) ? sex : null;
 }
 
 // Hidrata el muro desde la DB; si está vacío, lo prepobla con ejemplos.

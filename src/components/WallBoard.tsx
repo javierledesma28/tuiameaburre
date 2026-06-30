@@ -1,10 +1,17 @@
 import { motion } from "framer-motion";
-import { FeedItem } from "../game";
+import { FeedItem, ReactionType, useGame } from "../game";
 import { useI18n } from "../i18n";
 import { MODEL_BY_ID } from "../models";
 
 const NOTE_BG = ["#ffe27a", "#ffb3c8", "#bdec8a", "#a9d8ff", "#f3e9d2"];
 const ROT = ["-2deg", "1.5deg", "-1deg", "2.5deg", "-2.5deg", "1deg"];
+
+const REACTIONS: { type: ReactionType; emoji: string; key: string }[] = [
+  { type: "up", emoji: "👍", key: "reactUp" },
+  { type: "bot", emoji: "🤖", key: "reactBot" },
+  { type: "skull", emoji: "💀", key: "reactSkull" },
+  { type: "meh", emoji: "😐", key: "reactMeh" },
+];
 
 // Hash estable del id: así cada nota conserva su color y ángulo sin importar su
 // posición en la lista (antes se usaba el índice y al llegar una nota nueva se
@@ -18,6 +25,25 @@ function hashId(id: string) {
 function Note({ item }: { item: FeedItem }) {
   const h = hashId(item.id);
   const model = item.model ? MODEL_BY_ID[item.model] : null;
+  const { react, profile, toast } = useGame();
+  const { t } = useI18n();
+
+  // localStorage tiene el clientId; comparamos para no votar lo propio.
+  const myId = typeof window !== "undefined" ? localStorage.getItem("clientId") : null;
+  const isMine = !!item.authorClientId && item.authorClientId === myId;
+
+  const counts: Record<ReactionType, number> = {
+    up: item.rUp || 0,
+    bot: item.rBot || 0,
+    skull: item.rSkull || 0,
+    meh: item.rMeh || 0,
+  };
+
+  const onReact = (type: ReactionType) => {
+    if (isMine) return toast(t("reactSelf"));
+    react(item.id, type);
+  };
+
   return (
     <motion.div
       layout
@@ -40,6 +66,29 @@ function Note({ item }: { item: FeedItem }) {
           <span className="font-bold">{model.name}</span>
         </p>
       )}
+
+      {/* Reacciones / reactions */}
+      <div className="mt-3 flex flex-wrap gap-1.5 border-t border-paper-ink/10 pt-2.5">
+        {REACTIONS.map((r) => {
+          const active = item.my === r.type;
+          const n = counts[r.type];
+          return (
+            <button
+              key={r.type}
+              onClick={() => onReact(r.type)}
+              title={t(r.key) + (isMine ? ` · ${t("reactSelf")}` : "")}
+              className={`flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[11px] leading-none transition-colors ${
+                active
+                  ? "border-paper-ink/60 bg-paper-ink/10 text-paper-ink"
+                  : "border-paper-ink/15 text-paper-ink/55 hover:border-paper-ink/40"
+              } ${isMine ? "cursor-default opacity-60" : ""}`}
+            >
+              <span className="text-sm">{r.emoji}</span>
+              {n > 0 && <span className="font-bold">{n}</span>}
+            </button>
+          );
+        })}
+      </div>
     </motion.div>
   );
 }

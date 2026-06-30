@@ -9,22 +9,34 @@ import {
 import { socket, emitAck } from "./lib/socket";
 
 export type Screen = "home" | "ask" | "answer" | "wall" | "creator" | "account";
+export type ReactionType = "up" | "bot" | "meh" | "skull";
 export type FeedItem = {
   id: string;
   prompt: string;
   answer: string;
   ts: number;
   model?: string | null;
+  authorClientId?: string | null;
+  rUp?: number;
+  rBot?: number;
+  rMeh?: number;
+  rSkull?: number;
+  my?: ReactionType | null; // la reacción del cliente actual a esta nota
 };
 export type Stats = { online: number; totalAnswered: number; pending: number; boost?: Boost };
 export type Boost = { team: "ai" | "human"; mult: number } | null;
+export type Coronas = { human: number; ai: number };
 export type Prefs = { tone: string; lang: string; favModel: string | null };
 export type Profile = {
   nick: string | null;
   email: string | null;
   prefs: Prefs | null;
+  sex: string | null;
+  country: string | null;
   gamesAsked: number;
   gamesAnswered: number;
+  coronasHuman: number;
+  coronasAi: number;
 } | null;
 
 type GameCtx = {
@@ -35,6 +47,7 @@ type GameCtx = {
   stats: Stats;
   feed: FeedItem[];
   boost: Boost;
+  coronas: Coronas;
   profile: Profile;
   screen: Screen;
   go: (s: Screen) => void;
@@ -47,8 +60,9 @@ type GameCtx = {
   submitAnswer: (jobId: string, answer: string) => Promise<any>;
   skipJob: (jobId: string) => void;
   cancelAsk: (promptId: string) => void;
-  register: (email: string, nick: string, prefs: Prefs) => Promise<any>;
-  updatePrefs: (prefs: Prefs) => Promise<any>;
+  register: (email: string, nick: string, prefs: Prefs, sex: string) => Promise<any>;
+  updatePrefs: (prefs: Prefs, sex: string) => Promise<any>;
+  react: (answerId: string, type: ReactionType) => Promise<any>;
 };
 
 const Ctx = createContext<GameCtx>(null as any);
@@ -61,6 +75,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<Stats>({ online: 0, totalAnswered: 0, pending: 0, boost: null });
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [boost, setBoost] = useState<Boost>(null);
+  const [coronas, setCoronas] = useState<Coronas>({ human: 0, ai: 0 });
   const [profile, setProfile] = useState<Profile>(null);
   // Si quedó una pregunta esperando respuesta (p. ej. recargó la página),
   // volvemos directo a la pantalla de Preguntar para retomar la espera.
@@ -78,14 +93,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (typeof s.askCost === "number") setAskCost(s.askCost);
       if (typeof s.answerSeconds === "number") setAnswerSeconds(s.answerSeconds);
       setBoost(s.boost ?? null);
+      if (s.coronas) setCoronas(s.coronas);
       if ("profile" in s) setProfile(s.profile ?? null);
     };
     const onStats = (s: Stats) => {
       setStats(s);
       if ("boost" in s) setBoost(s.boost ?? null);
     };
-    const onFeedInit = (list: FeedItem[]) => setFeed(Array.isArray(list) ? list.slice(0, 40) : []);
-    const onFeedNew = (item: FeedItem) => setFeed((f) => [item, ...f].slice(0, 40));
+    // feed:init ahora trae { items, myReactions }; tolera el formato viejo (array).
+    const onFeedInit = (payload: any) => {
+      const list: FeedItem[] = Array.isArray(payload) ? payload : payload?.items || [];
+      const mine: Record<string, ReactionType> = Array.isArray(payload) ? {} : payload?.myReactions || {};
+      setFeed(list.slice(0, 40).map((it) => ({ ...it, my: mine[it.id] ?? null })));
+    };
+    const onFeedNew = (item: FeedItem) => setFeed((f) => [{ ...item, my: null }, ...f].slice(0, 40));
+    // Conteos de reacciones actualizados (difundido a todos).
+    const onFeedReact = (u: { id: string; rUp: number; rBot: number; rMeh: number; rSkull: number }) =>
+      setFeed((f) => f.map((it) => (it.id === u.id ? { ...it, rUp: u.rUp, rBot: u.rBot, rMeh: u.rMeh, rSkull: u.rSkull } : it)));
     const onWelcome = ({ clientId }: { clientId: string }) =>
       localStorage.setItem("clientId", clientId);
     const onConnect = () => {
@@ -99,6 +123,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on("stats", onStats);
     socket.on("feed:init", onFeedInit);
     socket.on("feed:new", onFeedNew);
+    socket.on("feed:react", onFeedReact);
     if (socket.connected) onConnect();
 
     return () => {
@@ -108,6 +133,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off("stats", onStats);
       socket.off("feed:init", onFeedInit);
       socket.off("feed:new", onFeedNew);
+      socket.off("feed:react", onFeedReact);
     };
   }, []);
 
@@ -118,6 +144,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
   const burst = () => setConfettiKey((k) => k + 1);
 
+  // Reaccionar a una nota: optimista (toggle local) + confirmación del server.
+  const react = async (answerId: string, type: ReactionType) => {
+    setFeed((f) =>
+      f.map((it) => (it.id === answerId ? { ...it, my: it.my === type ? null : type } : it))
+    );
+    const res = await emitAck<any>("react", { answerId, type });
+    if (res?.ok) {
+      setFeed((f) => f.map((it) => (it.id === answerId ? { ...it, my: res.my ?? null } : it)));
+    }
+    return res;
+  };
+
   const value: GameCtx = {
     credits,
     creditCap,
@@ -126,6 +164,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     stats,
     feed,
     boost,
+    coronas,
     profile,
     screen,
     go: setScreen,
@@ -138,8 +177,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     submitAnswer: (jobId, answer) => emitAck("submitAnswer", { jobId, answer }),
     skipJob: (jobId) => socket.emit("skipJob", { jobId }),
     cancelAsk: (promptId) => socket.emit("cancelAsk", { promptId }),
-    register: (email, nick, prefs) => emitAck("register", { email, nick, prefs }),
-    updatePrefs: (prefs) => emitAck("updatePrefs", { prefs }),
+    register: (email, nick, prefs, sex) => emitAck("register", { email, nick, prefs, sex }),
+    updatePrefs: (prefs, sex) => emitAck("updatePrefs", { prefs, sex }),
+    react,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

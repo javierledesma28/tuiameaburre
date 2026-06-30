@@ -13,9 +13,10 @@ const rise = (delay = 0) => ({
 
 const TONES = ["any", "gracioso", "serio", "poetico", "acido"];
 const LANGS = ["any", "es", "en"];
+const SEXES = ["m", "f", "nb", "na"];
 
 export default function Account() {
-  const { profile, credits, register, updatePrefs, toast, go } = useGame();
+  const { profile, credits, coronas, register, updatePrefs, toast, go } = useGame();
   const { t } = useI18n();
 
   const registered = !!profile?.nick;
@@ -24,6 +25,7 @@ export default function Account() {
   const [tone, setTone] = useState(profile?.prefs?.tone || "any");
   const [lang, setLang] = useState(profile?.prefs?.lang || "any");
   const [favModel, setFavModel] = useState<string | null>(profile?.prefs?.favModel ?? null);
+  const [sex, setSex] = useState<string>(profile?.sex || "na");
   const [busy, setBusy] = useState(false);
 
   const prefs = { tone, lang, favModel };
@@ -36,12 +38,12 @@ export default function Account() {
     setBusy(true);
     try {
       if (registered) {
-        const res = await updatePrefs(prefs);
+        const res = await updatePrefs(prefs, sex);
         if (!res?.ok) return toast(errorMsg(res?.error));
         toast(t("savedMsg"));
       } else {
         if (nick.trim().length < 2) return toast(t("badNick"));
-        const res = await register(email.trim(), nick.trim(), prefs);
+        const res = await register(email.trim(), nick.trim(), prefs, sex);
         if (!res?.ok) return toast(errorMsg(res?.error));
         toast(t("savedMsg"));
       }
@@ -93,13 +95,15 @@ export default function Account() {
           {registered && (
             <div className="mt-5 flex flex-wrap gap-3">
               {[
+                { v: `🧠 ${coronas.human}`, l: t("coronasHuman") },
+                { v: `🤖 ${coronas.ai}`, l: t("coronasAi") },
                 { v: credits, l: t("yourCredits") },
                 { v: profile!.gamesAsked, l: t("statsAsked") },
                 { v: profile!.gamesAnswered, l: t("statsAnsweredP") },
               ].map((s, i) => (
                 <div
                   key={i}
-                  className="flex min-w-[90px] flex-1 flex-col items-center rounded-[4px] bg-paper-ink/5 px-3 py-2"
+                  className="flex min-w-[80px] flex-1 flex-col items-center rounded-[4px] bg-paper-ink/5 px-3 py-2"
                 >
                   <span className="font-marker text-2xl text-paper-ink">{s.v}</span>
                   <span className="text-center font-mono text-[10px] uppercase tracking-wide text-paper-ink/50">
@@ -160,6 +164,18 @@ export default function Account() {
             {LANGS.map((lg) => (
               <Chip key={lg} active={lang === lg} onClick={() => setLang(lg)}>
                 {t("lang" + lg.charAt(0).toUpperCase() + lg.slice(1))}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="mb-1 font-marker text-xl text-ink">{t("prefSex")}</h3>
+          <p className="mb-2 font-hand text-base text-muted/70">{t("prefSexNote")}</p>
+          <div className="flex flex-wrap gap-2">
+            {SEXES.map((sx) => (
+              <Chip key={sx} active={sex === sx} onClick={() => setSex(sx)}>
+                {t("sex_" + sx)}
               </Chip>
             ))}
           </div>

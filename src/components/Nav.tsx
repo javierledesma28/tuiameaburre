@@ -6,7 +6,7 @@ import { useI18n } from "../i18n";
 type NavId = "home" | "wall" | "creator" | "account";
 
 export default function Nav() {
-  const { credits, creditCap, screen, go, profile } = useGame();
+  const { credits, creditCap, screen, go, profile, coronas } = useGame();
   const { t, lang, toggle } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -80,6 +80,18 @@ export default function Nav() {
       </nav>
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
+        {/* coronas / reputation crowns (oculto en mobile por espacio) */}
+        {(coronas.human > 0 || coronas.ai > 0) && (
+          <div
+            title={t("coronasHint")}
+            className="hidden items-center gap-2 rounded-[3px] border border-ink/20 bg-night-800/70 px-2.5 py-1 font-mono text-xs text-ink sm:flex"
+          >
+            <span>🧠 {coronas.human}</span>
+            <span className="text-muted">·</span>
+            <span>🤖 {coronas.ai}</span>
+          </div>
+        )}
+
         {/* etiqueta de créditos / credit tag */}
         <motion.div
           animate={gained ? { scale: [1, 1.18, 1] } : { scale: 1 }}
