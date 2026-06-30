@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 
-type NavId = "home" | "wall" | "creator" | "account" | "ranking" | "duel";
+type NavId = "home" | "wall" | "creator" | "account" | "ranking" | "duel" | "halluc";
 
 export default function Nav() {
   const { credits, creditCap, screen, go, profile, coronas } = useGame();
@@ -76,6 +76,7 @@ export default function Nav() {
         {link("home", t("navHome"))}
         {link("wall", t("navWall"))}
         {link("duel", t("navDuel"))}
+        {link("halluc", t("navHalluc"))}
         {link("ranking", t("navRanking"))}
         {link("creator", t("navCreator"))}
         {link("account", accountLabel)}
@@ -169,6 +170,7 @@ export default function Nav() {
                 {mobileLink("home", t("navHome"))}
                 {mobileLink("wall", t("navWall"))}
                 {mobileLink("duel", t("navDuel"))}
+                {mobileLink("halluc", t("navHalluc"))}
                 {mobileLink("ranking", t("navRanking"))}
                 {mobileLink("creator", t("navCreator"))}
                 {mobileLink("account", accountLabel)}

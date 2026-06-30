@@ -69,6 +69,14 @@ let duelPrompt = null; // prompt vigente que todos responden en el duelo
 const duelEntries = []; // entradas esperando rival: { id, prompt, answer, authorClientId, model }
 const duels = new Map(); // duelId -> { id, prompt, a, b, votesA:Set, votesB:Set, closed, winner }
 
+// ---- Modo Alucinación / Hallucination mode ----
+// Inventás un dato falso con seguridad; la gente vota si te lo creyó o te cazó.
+const HALLUC_CLOSE_VOTES = 5;
+const HALLUC_FOOL_CORONAS = 3; // engañaste a la mayoría
+const HALLUC_CAUGHT_CORONAS = 1; // te cazaron (por participar)
+let hallucPrompt = null;
+const hallucs = new Map(); // id -> { id, prompt, answer, authorClientId, model, real:Set, fake:Set, closed, fooled }
+
 const newId = () => crypto.randomBytes(8).toString("hex");
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -365,6 +373,36 @@ function closeDuel(d) {
   duels.delete(d.id);
 }
 
+// ---- Lógica de alucinaciones / hallucination logic ----
+function currentHallucPrompt() {
+  if (!hallucPrompt) hallucPrompt = SEED_PROMPTS[Math.floor(Math.random() * SEED_PROMPTS.length)];
+  return hallucPrompt;
+}
+function publicHalluc(h) {
+  return {
+    id: h.id,
+    prompt: h.prompt,
+    answer: h.answer,
+    model: h.model?.id || null,
+    real: h.real.size,
+    fake: h.fake.size,
+    closed: h.closed,
+    fooled: h.fooled ?? null,
+  };
+}
+function openHallucs() {
+  return [...hallucs.values()].filter((h) => !h.closed).map(publicHalluc);
+}
+function closeHalluc(h) {
+  h.closed = true;
+  h.fooled = h.real.size > h.fake.size; // engañó a la mayoría
+  addCoronas(h.authorClientId, 0, h.fooled ? HALLUC_FOOL_CORONAS : HALLUC_CAUGHT_CORONAS);
+  io.emit("halluc:closed", publicHalluc(h));
+  sendStateToClient(h.authorClientId);
+  checkAchievements(h.authorClientId);
+  hallucs.delete(h.id);
+}
+
 // Devuelve un prompt a la cola (p.ej. al saltar o agotar el tiempo).
 function requeue(prompt) {
   if (prompt.seed) return;
@@ -657,6 +695,51 @@ io.on("connection", (socket) => {
       items: hallOfShame(30),
       myReactions: clientId ? myReactions(clientId) : {},
     });
+  });
+
+  // --- Modo Alucinación / Hallucination mode ---
+  socket.on("getHallucState", (_payload, ack) => {
+    ack?.({ ok: true, prompt: currentHallucPrompt(), hallucs: openHallucs() });
+  });
+
+  socket.on("submitHallucination", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const answer = String(payload.answer || "").trim().slice(0, 2000);
+    if (!answer) return ack?.({ ok: false, error: "empty" });
+    const u = getUser(clientId);
+    const model = pickModel(u.prefs?.favModel);
+    const h = {
+      id: newId(),
+      prompt: currentHallucPrompt(),
+      answer,
+      authorClientId: clientId,
+      model,
+      real: new Set(),
+      fake: new Set(),
+      closed: false,
+      fooled: null,
+    };
+    hallucs.set(h.id, h);
+    bumpStreak(clientId);
+    checkAchievements(clientId);
+    hallucPrompt = SEED_PROMPTS[Math.floor(Math.random() * SEED_PROMPTS.length)]; // rota
+    io.emit("halluc:new", publicHalluc(h));
+    ack?.({ ok: true });
+  });
+
+  // Votar una alucinación: ¿la creíste (real) o la cazaste (fake)?
+  socket.on("voteHallucination", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const h = hallucs.get(payload.id);
+    if (!h || h.closed) return ack?.({ ok: false, error: "not_found" });
+    if (clientId === h.authorClientId) return ack?.({ ok: false, error: "self_vote" });
+    if (h.real.has(clientId) || h.fake.has(clientId)) return ack?.({ ok: false, error: "already" });
+    (payload.believe ? h.real : h.fake).add(clientId);
+    io.emit("halluc:update", publicHalluc(h));
+    if (h.real.size + h.fake.size >= HALLUC_CLOSE_VOTES) closeHalluc(h);
+    ack?.({ ok: true });
   });
 
   // --- Modo Duelo / Duel mode ---

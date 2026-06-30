@@ -8,7 +8,16 @@ import {
 } from "react";
 import { socket, emitAck } from "./lib/socket";
 
-export type Screen = "home" | "ask" | "answer" | "wall" | "creator" | "account" | "ranking" | "duel";
+export type Screen =
+  | "home"
+  | "ask"
+  | "answer"
+  | "wall"
+  | "creator"
+  | "account"
+  | "ranking"
+  | "duel"
+  | "halluc";
 export type ReactionType = "up" | "bot" | "meh" | "skull";
 export type FeedItem = {
   id: string;
@@ -80,6 +89,9 @@ type GameCtx = {
   getDuelState: () => Promise<any>;
   submitDuelEntry: (answer: string) => Promise<any>;
   voteDuel: (duelId: string, side: "a" | "b") => Promise<any>;
+  getHallucState: () => Promise<any>;
+  submitHallucination: (answer: string) => Promise<any>;
+  voteHallucination: (id: string, believe: boolean) => Promise<any>;
 };
 
 const Ctx = createContext<GameCtx>(null as any);
@@ -220,6 +232,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     getDuelState: () => emitAck("getDuelState", {}),
     submitDuelEntry: (answer) => emitAck("submitDuelEntry", { answer }),
     voteDuel: (duelId, side) => emitAck("voteDuel", { duelId, side }),
+    getHallucState: () => emitAck("getHallucState", {}),
+    submitHallucination: (answer) => emitAck("submitHallucination", { answer }),
+    voteHallucination: (id, believe) => emitAck("voteHallucination", { id, believe }),
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
