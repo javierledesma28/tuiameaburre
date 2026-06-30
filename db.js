@@ -30,6 +30,8 @@ db.exec(`
     streakDays    INTEGER NOT NULL DEFAULT 0,
     lastPlayedDay TEXT,
     achievements  TEXT,
+    modelsUsed    TEXT,
+    brokeCount    INTEGER NOT NULL DEFAULT 0,
     createdAt     INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS answers (
@@ -73,6 +75,8 @@ for (const def of [
   "streakDays INTEGER NOT NULL DEFAULT 0",
   "lastPlayedDay TEXT",
   "achievements TEXT",
+  "modelsUsed TEXT",
+  "brokeCount INTEGER NOT NULL DEFAULT 0",
 ]) addColumn("users", def);
 for (const def of [
   "authorClientId TEXT",
@@ -212,6 +216,62 @@ export function addCoronas(clientId, human, ai) {
 
 export function isNickTaken(nick, clientId) {
   return !!stmtNickTaken.get(nick, clientId);
+}
+
+// ---- Racha, modelos usados, logros / streak, models used, achievements ----
+const stmtSetStreak = db.prepare(
+  "UPDATE users SET streakDays = ?, lastPlayedDay = ? WHERE clientId = ?"
+);
+const stmtSetModelsUsed = db.prepare("UPDATE users SET modelsUsed = ? WHERE clientId = ?");
+const stmtIncBroke = db.prepare("UPDATE users SET brokeCount = brokeCount + 1 WHERE clientId = ?");
+const stmtSetAchievements = db.prepare("UPDATE users SET achievements = ? WHERE clientId = ?");
+
+function ymd(ts) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Actualiza la racha diaria al jugar; devuelve los días de racha vigentes.
+export function bumpStreak(clientId) {
+  const u = getUser(clientId);
+  const today = ymd(Date.now());
+  if (u.lastPlayedDay === today) return u.streakDays; // ya jugó hoy
+  const yesterday = ymd(Date.now() - 86400000);
+  const next = u.lastPlayedDay === yesterday ? (u.streakDays || 0) + 1 : 1;
+  stmtSetStreak.run(next, today, clientId);
+  return next;
+}
+
+// Registra que el cliente encarnó un modelo; devuelve cuántos distintos lleva.
+export function addModelUsed(clientId, modelId) {
+  if (!modelId) return 0;
+  const u = getUser(clientId);
+  let set = [];
+  try {
+    set = u.modelsUsed ? JSON.parse(u.modelsUsed) : [];
+  } catch {
+    set = [];
+  }
+  if (!set.includes(modelId)) {
+    set.push(modelId);
+    stmtSetModelsUsed.run(JSON.stringify(set), clientId);
+  }
+  return set.length;
+}
+
+export function incBroke(clientId) {
+  stmtIncBroke.run(clientId);
+}
+
+// Marca logros como desbloqueados; devuelve solo los nuevos.
+export function unlockAchievements(clientId, ids) {
+  const u = getUser(clientId);
+  const have = new Set(u.achievements || []);
+  const fresh = ids.filter((id) => !have.has(id));
+  if (!fresh.length) return [];
+  for (const id of fresh) have.add(id);
+  stmtSetAchievements.run(JSON.stringify([...have]), clientId);
+  return fresh;
 }
 
 // ---- Muro / wall ----

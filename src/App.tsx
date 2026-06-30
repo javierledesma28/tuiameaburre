@@ -12,6 +12,7 @@ import Creator from "./components/Creator";
 import Account from "./components/Account";
 import Leaderboard from "./components/Leaderboard";
 import Confetti from "./components/Confetti";
+import { ACHIEVEMENT_BY_ID } from "./achievements";
 
 const SCREENS: Record<string, React.ComponentType> = {
   home: Home,
@@ -24,7 +25,7 @@ const SCREENS: Record<string, React.ComponentType> = {
 };
 
 export default function App() {
-  const { screen, confettiKey, toastMsg } = useGame();
+  const { screen, confettiKey, toastMsg, toast, unlocked, clearUnlocked } = useGame();
   const { t } = useI18n();
   const Current = SCREENS[screen];
 
@@ -32,6 +33,16 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [screen]);
+
+  // Logro desbloqueado → toast festivo (el confeti ya lo dispara el store).
+  useEffect(() => {
+    if (!unlocked.length) return;
+    const id = unlocked[0];
+    const a = ACHIEVEMENT_BY_ID[id];
+    const extra = unlocked.length > 1 ? ` +${unlocked.length - 1}` : "";
+    toast(`${a?.emoji || "🏅"} ${t("achUnlocked")}: ${t("ach_" + id + "_name")}${extra}`);
+    clearUnlocked();
+  }, [unlocked]);
 
   return (
     <div className="grain relative min-h-screen">

@@ -48,6 +48,10 @@ type GameCtx = {
   feed: FeedItem[];
   boost: Boost;
   coronas: Coronas;
+  streak: number;
+  achievements: string[];
+  unlocked: string[]; // logros recién desbloqueados (para festejar)
+  clearUnlocked: () => void;
   profile: Profile;
   screen: Screen;
   go: (s: Screen) => void;
@@ -84,6 +88,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [boost, setBoost] = useState<Boost>(null);
   const [coronas, setCoronas] = useState<Coronas>({ human: 0, ai: 0 });
+  const [streak, setStreak] = useState(0);
+  const [achievements, setAchievements] = useState<string[]>([]);
+  const [unlocked, setUnlocked] = useState<string[]>([]);
   const [profile, setProfile] = useState<Profile>(null);
   // Si quedó una pregunta esperando respuesta (p. ej. recargó la página),
   // volvemos directo a la pantalla de Preguntar para retomar la espera.
@@ -102,6 +109,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (typeof s.answerSeconds === "number") setAnswerSeconds(s.answerSeconds);
       setBoost(s.boost ?? null);
       if (s.coronas) setCoronas(s.coronas);
+      if (typeof s.streak === "number") setStreak(s.streak);
+      if (Array.isArray(s.achievements)) setAchievements(s.achievements);
       if ("profile" in s) setProfile(s.profile ?? null);
     };
     const onStats = (s: Stats) => {
@@ -118,6 +127,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Conteos de reacciones actualizados (difundido a todos).
     const onFeedReact = (u: { id: string; rUp: number; rBot: number; rMeh: number; rSkull: number }) =>
       setFeed((f) => f.map((it) => (it.id === u.id ? { ...it, rUp: u.rUp, rBot: u.rBot, rMeh: u.rMeh, rSkull: u.rSkull } : it)));
+    const onUnlocked = ({ ids }: { ids: string[] }) => {
+      if (Array.isArray(ids) && ids.length) {
+        setUnlocked(ids);
+        setConfettiKey((k) => k + 1);
+      }
+    };
     const onWelcome = ({ clientId }: { clientId: string }) =>
       localStorage.setItem("clientId", clientId);
     const onConnect = () => {
@@ -132,6 +147,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on("feed:init", onFeedInit);
     socket.on("feed:new", onFeedNew);
     socket.on("feed:react", onFeedReact);
+    socket.on("unlocked", onUnlocked);
     if (socket.connected) onConnect();
 
     return () => {
@@ -142,6 +158,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off("feed:init", onFeedInit);
       socket.off("feed:new", onFeedNew);
       socket.off("feed:react", onFeedReact);
+      socket.off("unlocked", onUnlocked);
     };
   }, []);
 
@@ -173,6 +190,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     feed,
     boost,
     coronas,
+    streak,
+    achievements,
+    unlocked,
+    clearUnlocked: () => setUnlocked([]),
     profile,
     screen,
     go: setScreen,

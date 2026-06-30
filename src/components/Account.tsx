@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 import { MODELS } from "../models";
+import { ACHIEVEMENTS } from "../achievements";
 import ModelCard from "./ModelCard";
 
 const rise = (delay = 0) => ({
@@ -16,7 +17,8 @@ const LANGS = ["any", "es", "en"];
 const SEXES = ["m", "f", "nb", "na"];
 
 export default function Account() {
-  const { profile, credits, coronas, register, updatePrefs, toast, go } = useGame();
+  const { profile, credits, coronas, streak, achievements, register, updatePrefs, toast, go } = useGame();
+  const unlockedSet = new Set(achievements);
   const { t } = useI18n();
 
   const registered = !!profile?.nick;
@@ -97,6 +99,7 @@ export default function Account() {
               {[
                 { v: `🧠 ${coronas.human}`, l: t("coronasHuman") },
                 { v: `🤖 ${coronas.ai}`, l: t("coronasAi") },
+                { v: `🔥 ${streak}`, l: t("achStreak")(streak).replace(/^🔥\s*/, "") },
                 { v: credits, l: t("yourCredits") },
                 { v: profile!.gamesAsked, l: t("statsAsked") },
                 { v: profile!.gamesAnswered, l: t("statsAnsweredP") },
@@ -203,6 +206,39 @@ export default function Account() {
               />
             ))}
           </div>
+        </div>
+      </motion.section>
+
+      {/* ── Logros ── */}
+      <motion.section {...rise(0.16)} className="mb-8">
+        <h3 className="mb-3 font-marker text-xl text-ink">
+          {t("achTitle")}{" "}
+          <span className="font-mono text-sm text-muted/60">
+            {unlockedSet.size}/{ACHIEVEMENTS.length}
+          </span>
+        </h3>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {ACHIEVEMENTS.map((a) => {
+            const got = unlockedSet.has(a.id);
+            return (
+              <div
+                key={a.id}
+                className={`flex items-start gap-3 rounded-[6px] border p-3 transition-colors ${
+                  got ? "border-lamp/50 bg-lamp/10" : "border-ink/10 bg-night-800/40 opacity-60"
+                }`}
+              >
+                <span className={`text-2xl ${got ? "" : "grayscale"}`}>{got ? a.emoji : "🔒"}</span>
+                <div className="min-w-0">
+                  <p className={`font-marker text-base leading-tight ${got ? "text-lamp" : "text-muted"}`}>
+                    {t("ach_" + a.id + "_name")}
+                  </p>
+                  <p className="font-hand text-base leading-tight text-muted/80">
+                    {t("ach_" + a.id + "_hint")}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </motion.section>
 

@@ -20,6 +20,10 @@ import {
   incAsked,
   incAnswered,
   isNickTaken,
+  bumpStreak,
+  addModelUsed,
+  incBroke,
+  unlockAchievements,
   pushAnswer,
   recentAnswers as dbRecentAnswers,
   answersCount,
@@ -82,7 +86,43 @@ function profileOf(clientId) {
     gamesAnswered: u.gamesAnswered,
     coronasHuman: u.coronasHuman,
     coronasAi: u.coronasAi,
+    streakDays: u.streakDays,
+    achievements: u.achievements || [],
   };
+}
+
+// Evalúa los logros del usuario y notifica (a todas sus pestañas) los nuevos.
+// extra.insomne marca la franja 3-5am del momento de jugar.
+function checkAchievements(clientId, extra = {}) {
+  const u = getUser(clientId);
+  const have = new Set(u.achievements || []);
+  const earn = [];
+  const want = (id, cond) => {
+    if (cond && !have.has(id)) earn.push(id);
+  };
+  let modelsCount = 0;
+  try {
+    modelsCount = u.modelsUsed ? JSON.parse(u.modelsUsed).length : 0;
+  } catch {
+    modelsCount = 0;
+  }
+  want("first_answer", u.gamesAnswered >= 1);
+  want("prolifico", u.gamesAnswered >= 25);
+  want("curioso", u.gamesAsked >= 25);
+  want("querido", u.coronasHuman >= 10);
+  want("mas_robot", u.coronasAi >= 10);
+  want("multipersonalidad", modelsCount >= 5);
+  want("despedido", u.brokeCount >= 3);
+  want("racha7", u.streakDays >= 7);
+  want("racha30", u.streakDays >= 30);
+  want("insomne", !!extra.insomne);
+
+  if (!earn.length) return;
+  const fresh = unlockAchievements(clientId, earn);
+  if (fresh.length) {
+    emitToClient(clientId, "unlocked", { ids: fresh });
+    sendStateToClient(clientId);
+  }
 }
 
 // Código de país desde el header de Cloudflare (si está habilitado IP Geolocation).
@@ -115,6 +155,8 @@ function stateFor(clientId) {
     boost: computeBoost(),
     profile: profileOf(clientId),
     coronas: { human: u.coronasHuman, ai: u.coronasAi },
+    streak: u.streakDays,
+    achievements: u.achievements || [],
   };
 }
 
@@ -359,7 +401,10 @@ io.on("connection", (socket) => {
       rMeh: res.answer.rMeh,
       rSkull: res.answer.rSkull,
     });
-    if (res.answer.authorClientId) sendStateToClient(res.answer.authorClientId);
+    if (res.answer.authorClientId) {
+      sendStateToClient(res.answer.authorClientId);
+      checkAchievements(res.answer.authorClientId); // querido / mas_robot
+    }
     ack?.({ ok: true, my: res.my, answer: res.answer });
   });
 
@@ -380,6 +425,9 @@ io.on("connection", (socket) => {
 
     if (!free) addCredits(clientId, -ASK_COST);
     incAsked(clientId);
+    bumpStreak(clientId);
+    if (!free && getUser(clientId).credits === 0) incBroke(clientId);
+    checkAchievements(clientId);
 
     const tone = sanitizeTone(payload.tone);
     const prompt = {
@@ -494,6 +542,10 @@ io.on("connection", (socket) => {
     incAnswered(clientId);
 
     const modelId = job.model?.id || null;
+    if (modelId) addModelUsed(clientId, modelId);
+    bumpStreak(clientId);
+    const hr = new Date().getHours();
+    checkAchievements(clientId, { insomne: hr >= 3 && hr < 5 });
 
     // Entrega la respuesta a quien preguntó (ahora o cuando se reconecte).
     if (!job.prompt.seed) {
