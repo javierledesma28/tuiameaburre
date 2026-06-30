@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        hand: ['"Caveat"', "cursive"],
+        hand: ['"Shantell Sans"', "cursive"],
         marker: ['"Permanent Marker"', "cursive"],
         mono: ['"Space Mono"', "ui-monospace", "monospace"],
         sans: ['"Inter"', "system-ui", "sans-serif"],
