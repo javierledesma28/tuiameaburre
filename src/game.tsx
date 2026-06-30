@@ -8,7 +8,7 @@ import {
 } from "react";
 import { socket, emitAck } from "./lib/socket";
 
-export type Screen = "home" | "ask" | "answer" | "wall" | "creator" | "account" | "ranking";
+export type Screen = "home" | "ask" | "answer" | "wall" | "creator" | "account" | "ranking" | "duel";
 export type ReactionType = "up" | "bot" | "meh" | "skull";
 export type FeedItem = {
   id: string;
@@ -75,6 +75,9 @@ type GameCtx = {
     model?: string | null;
   }) => Promise<any>;
   getHighlight: () => Promise<any>;
+  getDuelState: () => Promise<any>;
+  submitDuelEntry: (answer: string) => Promise<any>;
+  voteDuel: (duelId: string, side: "a" | "b") => Promise<any>;
 };
 
 const Ctx = createContext<GameCtx>(null as any);
@@ -211,6 +214,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     react,
     getRanking: (filters) => emitAck("getRanking", filters),
     getHighlight: () => emitAck("getHighlight", {}),
+    getDuelState: () => emitAck("getDuelState", {}),
+    submitDuelEntry: (answer) => emitAck("submitDuelEntry", { answer }),
+    voteDuel: (duelId, side) => emitAck("voteDuel", { duelId, side }),
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

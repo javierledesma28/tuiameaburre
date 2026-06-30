@@ -11,6 +11,7 @@ import Wall from "./components/Wall";
 import Creator from "./components/Creator";
 import Account from "./components/Account";
 import Leaderboard from "./components/Leaderboard";
+import Duel from "./components/Duel";
 import Confetti from "./components/Confetti";
 import { ACHIEVEMENT_BY_ID } from "./achievements";
 
@@ -22,6 +23,7 @@ const SCREENS: Record<string, React.ComponentType> = {
   creator: Creator,
   account: Account,
   ranking: Leaderboard,
+  duel: Duel,
 };
 
 export default function App() {

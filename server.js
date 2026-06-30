@@ -14,6 +14,7 @@ import { pickModel, MODEL_BY_ID } from "./models.js";
 import {
   getUser as dbGetUser,
   setCredits,
+  addCoronas,
   upsertProfile,
   setPrefs as dbSetPrefs,
   setCountry,
@@ -58,6 +59,14 @@ const recentAnswers = []; // cache del muro (se hidrata desde la DB) / wall cach
 const clientSockets = new Map(); // clientId -> Set<socketId> (un cliente puede tener varias pestañas)
 const pendingDeliveries = new Map(); // clientId -> respuestas a entregar cuando se reconecte
 let totalAnswered = 0; // contador global / global counter
+
+// ---- Modo Duelo / Duel mode ----
+const DUEL_CLOSE_VOTES = 5; // votos para cerrar un duelo
+const DUEL_WIN_CORONAS = 3; // coronas IA al ganador
+const DUEL_LOSE_CORONAS = 1; // coronas IA al perdedor (por participar)
+let duelPrompt = null; // prompt vigente que todos responden en el duelo
+const duelEntries = []; // entradas esperando rival: { id, prompt, answer, authorClientId, model }
+const duels = new Map(); // duelId -> { id, prompt, a, b, votesA:Set, votesB:Set, closed, winner }
 
 const newId = () => crypto.randomBytes(8).toString("hex");
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
@@ -290,6 +299,68 @@ function pushFeed(prompt, answer, model, authorClientId) {
   pushAnswer(item, MAX_FEED);
   totalAnswered++;
   io.emit("feed:new", item);
+}
+
+// ---- Lógica de duelos / duel logic ----
+function currentDuelPrompt() {
+  if (!duelPrompt) duelPrompt = SEED_PROMPTS[Math.floor(Math.random() * SEED_PROMPTS.length)];
+  return duelPrompt;
+}
+// Vista pública de un duelo (sin exponer clientIds).
+function publicDuel(d) {
+  return {
+    id: d.id,
+    prompt: d.prompt,
+    a: { answer: d.a.answer, model: d.a.model?.id || null },
+    b: { answer: d.b.answer, model: d.b.model?.id || null },
+    votesA: d.votesA.size,
+    votesB: d.votesB.size,
+    closed: d.closed,
+    winner: d.winner || null,
+  };
+}
+// Empareja entradas del mismo prompt (autores distintos) en duelos.
+function tryPairDuels() {
+  let guard = 0;
+  while (duelEntries.length >= 2 && guard++ < 50) {
+    const a = duelEntries[0];
+    const j = duelEntries.findIndex(
+      (e, i) => i > 0 && e.prompt === a.prompt && e.authorClientId !== a.authorClientId
+    );
+    if (j === -1) break;
+    const b = duelEntries.splice(j, 1)[0];
+    duelEntries.splice(0, 1);
+    const duel = { id: newId(), prompt: a.prompt, a, b, votesA: new Set(), votesB: new Set(), closed: false, winner: null };
+    duels.set(duel.id, duel);
+    io.emit("duel:new", publicDuel(duel));
+  }
+  // Cuando no quedan entradas pendientes, rotamos el prompt para variar.
+  if (duelEntries.length === 0) {
+    duelPrompt = SEED_PROMPTS[Math.floor(Math.random() * SEED_PROMPTS.length)];
+  }
+}
+function openDuels() {
+  return [...duels.values()].filter((d) => !d.closed).map(publicDuel);
+}
+// Cierra el duelo, decide ganador y reparte coronas IA.
+function closeDuel(d) {
+  d.closed = true;
+  d.winner = d.votesA.size === d.votesB.size ? "tie" : d.votesA.size > d.votesB.size ? "a" : "b";
+  const winEntry = d.winner === "a" ? d.a : d.winner === "b" ? d.b : null;
+  if (d.winner === "tie") {
+    addCoronas(d.a.authorClientId, 0, DUEL_LOSE_CORONAS);
+    addCoronas(d.b.authorClientId, 0, DUEL_LOSE_CORONAS);
+  } else {
+    const loseEntry = winEntry === d.a ? d.b : d.a;
+    addCoronas(winEntry.authorClientId, 0, DUEL_WIN_CORONAS);
+    addCoronas(loseEntry.authorClientId, 0, DUEL_LOSE_CORONAS);
+  }
+  io.emit("duel:closed", publicDuel(d));
+  for (const cid of [d.a.authorClientId, d.b.authorClientId]) {
+    sendStateToClient(cid);
+    checkAchievements(cid);
+  }
+  duels.delete(d.id);
 }
 
 // Devuelve un prompt a la cola (p.ej. al saltar o agotar el tiempo).
@@ -573,6 +644,47 @@ io.on("connection", (socket) => {
   // Respuesta de la semana (la más reaccionada en 7 días).
   socket.on("getHighlight", (_payload, ack) => {
     ack?.({ ok: true, highlight: answerOfWeek() });
+  });
+
+  // --- Modo Duelo / Duel mode ---
+  socket.on("getDuelState", (_payload, ack) => {
+    ack?.({ ok: true, prompt: currentDuelPrompt(), duels: openDuels() });
+  });
+
+  // Enviar tu respuesta al prompt del duelo → entra a la pileta de emparejamiento.
+  socket.on("submitDuelEntry", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const answer = String(payload.answer || "").trim().slice(0, 2000);
+    if (!answer) return ack?.({ ok: false, error: "empty" });
+
+    const u = getUser(clientId);
+    const model = pickModel(u.prefs?.favModel);
+    const entry = { id: newId(), prompt: currentDuelPrompt(), answer, authorClientId: clientId, model };
+    duelEntries.push(entry);
+    addModelUsed(clientId, model.id);
+    bumpStreak(clientId);
+    checkAchievements(clientId);
+    tryPairDuels();
+    ack?.({ ok: true, model });
+    socket.emit("duel:state", { prompt: currentDuelPrompt(), duels: openDuels() });
+  });
+
+  // Votar un duelo (A o B). Un voto por cliente; no podés votar tu propio duelo.
+  socket.on("voteDuel", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const d = duels.get(payload.duelId);
+    if (!d || d.closed) return ack?.({ ok: false, error: "not_found" });
+    if (clientId === d.a.authorClientId || clientId === d.b.authorClientId)
+      return ack?.({ ok: false, error: "self_vote" });
+    if (d.votesA.has(clientId) || d.votesB.has(clientId))
+      return ack?.({ ok: false, error: "already" });
+    const side = payload.side === "b" ? "b" : "a";
+    (side === "a" ? d.votesA : d.votesB).add(clientId);
+    io.emit("duel:update", publicDuel(d));
+    if (d.votesA.size + d.votesB.size >= DUEL_CLOSE_VOTES) closeDuel(d);
+    ack?.({ ok: true });
   });
 
   // --- Ranking público / public leaderboard ---

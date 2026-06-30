@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 
-type NavId = "home" | "wall" | "creator" | "account" | "ranking";
+type NavId = "home" | "wall" | "creator" | "account" | "ranking" | "duel";
 
 export default function Nav() {
   const { credits, creditCap, screen, go, profile, coronas } = useGame();
@@ -75,6 +75,7 @@ export default function Nav() {
       <nav className="ml-2 hidden gap-5 sm:flex">
         {link("home", t("navHome"))}
         {link("wall", t("navWall"))}
+        {link("duel", t("navDuel"))}
         {link("ranking", t("navRanking"))}
         {link("creator", t("navCreator"))}
         {link("account", accountLabel)}
@@ -167,6 +168,7 @@ export default function Nav() {
                 <span className="tape" style={{ right: 22, top: -11, transform: "rotate(5deg)" }} />
                 {mobileLink("home", t("navHome"))}
                 {mobileLink("wall", t("navWall"))}
+                {mobileLink("duel", t("navDuel"))}
                 {mobileLink("ranking", t("navRanking"))}
                 {mobileLink("creator", t("navCreator"))}
                 {mobileLink("account", accountLabel)}
