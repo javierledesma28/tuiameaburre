@@ -25,6 +25,7 @@ import {
   answersCount,
   myReactions,
   react as dbReact,
+  topPlayers,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -514,6 +515,23 @@ io.on("connection", (socket) => {
       boosted: aiBoost > 1,
       model: job.model || null,
     });
+  });
+
+  // --- Ranking público / public leaderboard ---
+  socket.on("getRanking", (payload = {}, ack) => {
+    const category = payload.category === "ai" ? "ai" : "human";
+    const period = ["today", "week", "all"].includes(payload.period) ? payload.period : "all";
+    const country =
+      typeof payload.country === "string" && /^[A-Z]{2}$/.test(payload.country)
+        ? payload.country
+        : null;
+    const sex = sanitizeSex(payload.sex);
+    const model = MODEL_BY_ID[payload.model] ? payload.model : null;
+    const rows = topPlayers({ category, period, country, sex, model, limit: 50 });
+    // Coronas mundiales (histórico, global) para el "hall of fame".
+    const kingHuman = topPlayers({ category: "human", period: "all", limit: 1 })[0] || null;
+    const kingAi = topPlayers({ category: "ai", period: "all", limit: 1 })[0] || null;
+    ack?.({ ok: true, rows, category, period, kingHuman, kingAi });
   });
 
   // Envía el muro inicial + las reacciones propias del cliente.

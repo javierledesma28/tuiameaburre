@@ -275,6 +275,61 @@ export const react = db.transaction((answerId, voterClientId, type) => {
   return { answer: parseAnswer(stmtGetAnswer.get(answerId)), my: newType };
 });
 
+// ---- Ranking / leaderboard ----
+// Cuenta votos recibidos por cada autor (agregado desde reactions) con filtros.
+// category: "human" (👍) | "ai" (🤖/💀). period: "today"|"week"|"all".
+// Filtros opcionales: country, sex, model. Solo usuarios registrados (con nick).
+export function topPlayers({ category, period, country, sex, model, limit = 50 } = {}) {
+  const types = category === "ai" ? ["bot", "skull"] : ["up"];
+  const conds = [
+    `r.type IN (${types.map(() => "?").join(",")})`,
+    "u.nick IS NOT NULL",
+    "r.authorClientId IS NOT NULL",
+  ];
+  const params = [...types];
+
+  let cutoff = 0;
+  if (period === "today") {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    cutoff = d.getTime();
+  } else if (period === "week") {
+    cutoff = Date.now() - 7 * 86400000;
+  }
+  if (cutoff) {
+    conds.push("r.ts >= ?");
+    params.push(cutoff);
+  }
+
+  let joinAnswers = "";
+  if (model) {
+    joinAnswers = "JOIN answers a ON a.id = r.answerId";
+    conds.push("a.model = ?");
+    params.push(model);
+  }
+  if (country) {
+    conds.push("u.country = ?");
+    params.push(country);
+  }
+  if (sex) {
+    conds.push("u.sex = ?");
+    params.push(sex);
+  }
+
+  const sql = `
+    SELECT u.nick AS nick, u.country AS country, u.sex AS sex,
+           u.clientId AS clientId, COUNT(*) AS score
+    FROM reactions r
+    JOIN users u ON u.clientId = r.authorClientId
+    ${joinAnswers}
+    WHERE ${conds.join(" AND ")}
+    GROUP BY r.authorClientId
+    ORDER BY score DESC, MIN(u.createdAt) ASC
+    LIMIT ?`;
+  params.push(limit);
+  return db.prepare(sql).all(...params);
+}
+
 function prevTypeOf(answerId, voterClientId) {
   return stmtGetReaction.get(answerId, voterClientId)?.type || null;
 }

@@ -10,6 +10,7 @@ import Answer from "./components/Answer";
 import Wall from "./components/Wall";
 import Creator from "./components/Creator";
 import Account from "./components/Account";
+import Leaderboard from "./components/Leaderboard";
 import Confetti from "./components/Confetti";
 
 const SCREENS: Record<string, React.ComponentType> = {
@@ -19,6 +20,7 @@ const SCREENS: Record<string, React.ComponentType> = {
   wall: Wall,
   creator: Creator,
   account: Account,
+  ranking: Leaderboard,
 };
 
 export default function App() {

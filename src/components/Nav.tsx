@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 
-type NavId = "home" | "wall" | "creator" | "account";
+type NavId = "home" | "wall" | "creator" | "account" | "ranking";
 
 export default function Nav() {
   const { credits, creditCap, screen, go, profile, coronas } = useGame();
@@ -75,6 +75,7 @@ export default function Nav() {
       <nav className="ml-2 hidden gap-5 sm:flex">
         {link("home", t("navHome"))}
         {link("wall", t("navWall"))}
+        {link("ranking", t("navRanking"))}
         {link("creator", t("navCreator"))}
         {link("account", accountLabel)}
       </nav>
@@ -82,14 +83,15 @@ export default function Nav() {
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         {/* coronas / reputation crowns (oculto en mobile por espacio) */}
         {(coronas.human > 0 || coronas.ai > 0) && (
-          <div
+          <button
+            onClick={() => navTo("ranking")}
             title={t("coronasHint")}
-            className="hidden items-center gap-2 rounded-[3px] border border-ink/20 bg-night-800/70 px-2.5 py-1 font-mono text-xs text-ink sm:flex"
+            className="hidden items-center gap-2 rounded-[3px] border border-ink/20 bg-night-800/70 px-2.5 py-1 font-mono text-xs text-ink transition-colors hover:border-lamp sm:flex"
           >
             <span>🧠 {coronas.human}</span>
             <span className="text-muted">·</span>
             <span>🤖 {coronas.ai}</span>
-          </div>
+          </button>
         )}
 
         {/* etiqueta de créditos / credit tag */}
@@ -165,6 +167,7 @@ export default function Nav() {
                 <span className="tape" style={{ right: 22, top: -11, transform: "rotate(5deg)" }} />
                 {mobileLink("home", t("navHome"))}
                 {mobileLink("wall", t("navWall"))}
+                {mobileLink("ranking", t("navRanking"))}
                 {mobileLink("creator", t("navCreator"))}
                 {mobileLink("account", accountLabel)}
               </div>

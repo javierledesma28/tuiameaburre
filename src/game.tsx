@@ -8,7 +8,7 @@ import {
 } from "react";
 import { socket, emitAck } from "./lib/socket";
 
-export type Screen = "home" | "ask" | "answer" | "wall" | "creator" | "account";
+export type Screen = "home" | "ask" | "answer" | "wall" | "creator" | "account" | "ranking";
 export type ReactionType = "up" | "bot" | "meh" | "skull";
 export type FeedItem = {
   id: string;
@@ -63,6 +63,13 @@ type GameCtx = {
   register: (email: string, nick: string, prefs: Prefs, sex: string) => Promise<any>;
   updatePrefs: (prefs: Prefs, sex: string) => Promise<any>;
   react: (answerId: string, type: ReactionType) => Promise<any>;
+  getRanking: (filters: {
+    category: "human" | "ai";
+    period: "today" | "week" | "all";
+    country?: string | null;
+    sex?: string | null;
+    model?: string | null;
+  }) => Promise<any>;
 };
 
 const Ctx = createContext<GameCtx>(null as any);
@@ -180,6 +187,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     register: (email, nick, prefs, sex) => emitAck("register", { email, nick, prefs, sex }),
     updatePrefs: (prefs, sex) => emitAck("updatePrefs", { prefs, sex }),
     react,
+    getRanking: (filters) => emitAck("getRanking", filters),
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
