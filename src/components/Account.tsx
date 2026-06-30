@@ -5,6 +5,11 @@ import { useI18n } from "../i18n";
 import { MODELS } from "../models";
 import { ACHIEVEMENTS } from "../achievements";
 import ModelCard from "./ModelCard";
+import MonitorHead from "./MonitorHead";
+
+const ROBOT_EYES = ["#8ff0b5", "#ffd280", "#a9d8ff", "#ffb3c8", "#ff6f61", "#c4b5fd"];
+const ROBOT_LEDS = ["#ffb454", "#5fbf7d", "#ff6f61", "#5b8def", "#ffffff"];
+const ROBOT_HATS = ["", "🎩", "👑", "🧢", "🎓", "🤠", "🎈", "🪖", "🎀", "🍕"];
 
 const rise = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -28,9 +33,12 @@ export default function Account() {
   const [lang, setLang] = useState(profile?.prefs?.lang || "any");
   const [favModel, setFavModel] = useState<string | null>(profile?.prefs?.favModel ?? null);
   const [sex, setSex] = useState<string>(profile?.sex || "na");
+  const [eye, setEye] = useState<string>(profile?.prefs?.robot?.eye || ROBOT_EYES[0]);
+  const [led, setLed] = useState<string>(profile?.prefs?.robot?.led || ROBOT_LEDS[0]);
+  const [hat, setHat] = useState<string>(profile?.prefs?.robot?.hat ?? "");
   const [busy, setBusy] = useState(false);
 
-  const prefs = { tone, lang, favModel };
+  const prefs = { tone, lang, favModel, robot: { eye, led, hat } };
 
   const errorMsg = (e?: string) =>
     e === "nick_taken" ? t("nickTaken") : e === "bad_email" ? t("badEmail") : t("badNick");
@@ -205,6 +213,62 @@ export default function Account() {
                 onClick={() => setFavModel(m.id)}
               />
             ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* ── Personalizá tu robot ── */}
+      <motion.section {...rise(0.15)} className="mb-8">
+        <h3 className="mb-3 font-marker text-xl text-ink">{t("robotTitle")}</h3>
+        <div className="flex flex-col items-center gap-4 rounded-[6px] border border-ink/10 bg-night-800/40 p-4 sm:flex-row sm:items-start">
+          <div className="shrink-0">
+            <MonitorHead className="w-24" eye={eye} led={led} hat={hat || undefined} />
+          </div>
+          <div className="w-full space-y-3">
+            <div>
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted/60">{t("robotEye")}</p>
+              <div className="flex flex-wrap gap-2">
+                {ROBOT_EYES.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setEye(c)}
+                    className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${eye === c ? "border-ink" : "border-transparent"}`}
+                    style={{ background: c }}
+                    aria-label={c}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted/60">{t("robotLed")}</p>
+              <div className="flex flex-wrap gap-2">
+                {ROBOT_LEDS.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setLed(c)}
+                    className={`h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 ${led === c ? "border-ink" : "border-transparent"}`}
+                    style={{ background: c }}
+                    aria-label={c}
+                  />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-muted/60">{t("robotHat")}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ROBOT_HATS.map((h) => (
+                  <button
+                    key={h || "none"}
+                    onClick={() => setHat(h)}
+                    className={`grid h-8 w-8 place-items-center rounded-[5px] border text-lg transition-colors ${
+                      hat === h ? "border-lamp bg-lamp/15" : "border-ink/15 hover:border-lamp/50"
+                    }`}
+                  >
+                    {h || "🚫"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </motion.section>

@@ -20,6 +20,7 @@ export default function Answer() {
   const [secs, setSecs] = useState(60);
   const [model, setModel] = useState<Model | null>(null);
   const [roast, setRoast] = useState(false);
+  const [cutoff, setCutoff] = useState(false);
   const jobId = useRef<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const deadline = useRef(0);
@@ -89,7 +90,7 @@ export default function Answer() {
     if (!jobId.current) return;
     const v = text.trim();
     if (!v) return toast(t("emptyAnswer"));
-    const res = await submitAnswer(jobId.current, v, roast);
+    const res = await submitAnswer(jobId.current, v, roast, cutoff);
     if (!res?.ok) {
       if (res?.error === "expired") {
         stopTimer();
@@ -210,6 +211,25 @@ export default function Answer() {
               </span>
               <span className={`ml-auto h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${roast ? "bg-marker-red" : "bg-ink/20"}`}>
                 <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${roast ? "translate-x-4" : ""}`} />
+              </span>
+            </button>
+
+            {/* Modo Token Limit: tu respuesta se corta de golpe ✂️ */}
+            <button
+              onClick={() => setCutoff((c) => !c)}
+              className={`mb-3 flex w-full items-center gap-2 rounded-[5px] border px-3 py-2 text-left transition-colors ${
+                cutoff ? "border-marker-blue bg-marker-blue/10" : "border-ink/15 hover:border-marker-blue/50"
+              }`}
+            >
+              <span className="text-xl">✂️</span>
+              <span className="min-w-0">
+                <span className={`block font-marker text-base leading-tight ${cutoff ? "text-marker-blue" : "text-ink"}`}>
+                  {t("cutoffToggle")}
+                </span>
+                <span className="block font-hand text-base leading-tight text-muted">{t("cutoffHint")}</span>
+              </span>
+              <span className={`ml-auto h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${cutoff ? "bg-marker-blue" : "bg-ink/20"}`}>
+                <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${cutoff ? "translate-x-4" : ""}`} />
               </span>
             </button>
 

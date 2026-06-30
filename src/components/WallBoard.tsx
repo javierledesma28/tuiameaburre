@@ -65,7 +65,13 @@ function Note({ item }: { item: FeedItem }) {
         <span className="text-marker-red">&gt; </span>
         {item.prompt}
       </p>
-      <p className="whitespace-pre-wrap font-hand text-xl leading-tight">{item.answer}</p>
+      <p className="whitespace-pre-wrap font-hand text-xl leading-tight">
+        {item.answer}
+        {item.cutoff ? <span className="text-paper-ink/40">—</span> : null}
+      </p>
+      {item.cutoff ? (
+        <p className="mt-1 font-mono text-[10px] text-marker-blue/80">✂️ {t("cutoffBadge")}</p>
+      ) : null}
       {model && (
         <p className="mt-3 flex items-center gap-1 font-mono text-[10px] text-paper-ink/45">
           <span>{model.emoji}</span>

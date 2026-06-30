@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function MonitorHead({ className = "", photoSrc }: { className?: string; photoSrc?: string }) {
+export default function MonitorHead({
+  className = "",
+  photoSrc,
+  eye = "#8ff0b5",
+  led = "#ffb454",
+  hat,
+}: {
+  className?: string;
+  photoSrc?: string;
+  eye?: string; // color de fósforo (ojos/boca)
+  led?: string; // color del LED de la antena
+  hat?: string; // emoji de sombrero (opcional)
+}) {
   const ref = useRef<SVGSVGElement>(null);
   const [gaze, setGaze] = useState({ x: 0, y: 0 });
 
@@ -82,8 +94,15 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
 
       {/* ── Antenna ── */}
       <line x1="60" y1="18" x2="60" y2="44" stroke="#5fbf7d" strokeWidth="2" strokeLinecap="round" />
-      <circle cx="60" cy="14" r="5" fill="#ffb454" filter="url(#mh-led)" className="animate-twinkle" />
-      <circle cx="60" cy="14" r="3" fill="#ffd280" className="animate-twinkle" />
+      <circle cx="60" cy="14" r="5" fill={led} filter="url(#mh-led)" className="animate-twinkle" />
+      <circle cx="60" cy="14" r="3" fill="#fff" opacity="0.55" className="animate-twinkle" />
+
+      {/* ── Sombrero (opcional) ── */}
+      {hat && (
+        <text x="60" y="12" textAnchor="middle" fontSize="22" style={{ pointerEvents: "none" }}>
+          {hat}
+        </text>
+      )}
 
       {/* ── Monitor shell ── */}
       <rect x="12" y="44" width="96" height="74" rx="10" fill="#0c1a10" stroke="#5fbf7d" strokeWidth="2.5" />
@@ -136,13 +155,13 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
           <ellipse cx="60" cy="58" rx="28" ry="6" fill="rgba(143,240,181,0.04)" />
 
           <g filter="url(#mh-glow)">
-            <ellipse cx="44" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
-            <ellipse cx={44 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
+            <ellipse cx="44" cy="76" rx="10" ry="10" fill="#061206" stroke={eye} strokeWidth="1" opacity="0.6" />
+            <ellipse cx={44 + x} cy={76 + y} rx="6.5" ry="6.5" fill={eye} opacity="0.92" />
             <ellipse cx={44 + x} cy={76 + y} rx="3.2" ry="3.2" fill="#071007" />
             <circle cx={43.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
 
-            <ellipse cx="76" cy="76" rx="10" ry="10" fill="#061206" stroke="#8ff0b5" strokeWidth="1" opacity="0.6" />
-            <ellipse cx={76 + x} cy={76 + y} rx="6.5" ry="6.5" fill="#8ff0b5" opacity="0.92" />
+            <ellipse cx="76" cy="76" rx="10" ry="10" fill="#061206" stroke={eye} strokeWidth="1" opacity="0.6" />
+            <ellipse cx={76 + x} cy={76 + y} rx="6.5" ry="6.5" fill={eye} opacity="0.92" />
             <ellipse cx={76 + x} cy={76 + y} rx="3.2" ry="3.2" fill="#071007" />
             <circle cx={75.2 + x} cy={74.8 + y} r="1" fill="rgba(255,255,255,0.45)" />
           </g>
@@ -150,7 +169,7 @@ export default function MonitorHead({ className = "", photoSrc }: { className?: 
           <path
             d="M 46 95 Q 60 104 74 95"
             fill="none"
-            stroke="#8ff0b5"
+            stroke={eye}
             strokeWidth="2.5"
             strokeLinecap="round"
             filter="url(#mh-glow)"

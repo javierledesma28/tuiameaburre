@@ -31,12 +31,14 @@ export type FeedItem = {
   rMeh?: number;
   rSkull?: number;
   roast?: number;
+  cutoff?: number;
   my?: ReactionType | null; // la reacción del cliente actual a esta nota
 };
+export type Robot = { eye: string; led: string; hat: string };
 export type Stats = { online: number; totalAnswered: number; pending: number; boost?: Boost };
 export type Boost = { team: "ai" | "human"; mult: number } | null;
 export type Coronas = { human: number; ai: number };
-export type Prefs = { tone: string; lang: string; favModel: string | null };
+export type Prefs = { tone: string; lang: string; favModel: string | null; robot?: Robot | null };
 export type Profile = {
   nick: string | null;
   email: string | null;
@@ -71,7 +73,7 @@ type GameCtx = {
   burst: () => void;
   ask: (text: string, tone?: string) => Promise<any>;
   requestJob: () => Promise<any>;
-  submitAnswer: (jobId: string, answer: string, roast?: boolean) => Promise<any>;
+  submitAnswer: (jobId: string, answer: string, roast?: boolean, cutoff?: boolean) => Promise<any>;
   skipJob: (jobId: string) => void;
   cancelAsk: (promptId: string) => void;
   register: (email: string, nick: string, prefs: Prefs, sex: string) => Promise<any>;
@@ -220,7 +222,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     burst,
     ask: (text, tone) => emitAck("ask", { text, tone }),
     requestJob: () => emitAck("requestJob", {}),
-    submitAnswer: (jobId, answer, roast) => emitAck("submitAnswer", { jobId, answer, roast }),
+    submitAnswer: (jobId, answer, roast, cutoff) => emitAck("submitAnswer", { jobId, answer, roast, cutoff }),
     skipJob: (jobId) => socket.emit("skipJob", { jobId }),
     cancelAsk: (promptId) => socket.emit("cancelAsk", { promptId }),
     register: (email, nick, prefs, sex) => emitAck("register", { email, nick, prefs, sex }),

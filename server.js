@@ -290,7 +290,7 @@ function broadcastStats() {
 }
 
 // Añade una respuesta al muro (memoria + DB) y la difunde.
-function pushFeed(prompt, answer, model, authorClientId, roast) {
+function pushFeed(prompt, answer, model, authorClientId, roast, cutoff) {
   const item = {
     id: newId(),
     prompt,
@@ -298,6 +298,7 @@ function pushFeed(prompt, answer, model, authorClientId, roast) {
     model: model || null,
     authorClientId: authorClientId || null,
     roast: roast ? 1 : 0,
+    cutoff: cutoff ? 1 : 0,
     rUp: 0,
     rBot: 0,
     rMeh: 0,
@@ -636,6 +637,7 @@ io.on("connection", (socket) => {
 
     const answer = String(payload.answer || "").trim().slice(0, 2000);
     const roast = !!payload.roast;
+    const cutoff = !!payload.cutoff;
     if (!answer) {
       requeue(job.prompt);
       return ack?.({ ok: false, error: "empty" });
@@ -669,7 +671,7 @@ io.on("connection", (socket) => {
       });
     }
 
-    pushFeed(job.prompt.text, answer, modelId, clientId, roast);
+    pushFeed(job.prompt.text, answer, modelId, clientId, roast, cutoff);
     broadcastStats();
     sendState(socket);
     ack?.({
@@ -825,12 +827,24 @@ io.on("connection", (socket) => {
 // Normaliza preferencias entrantes / sanitize incoming prefs.
 const TONES = ["any", "gracioso", "serio", "poetico", "acido"];
 const LANGS = ["any", "es", "en"];
+// Paletas/sombreros permitidos para personalizar el robot.
+const ROBOT_EYES = ["#8ff0b5", "#ffd280", "#a9d8ff", "#ffb3c8", "#ff6f61", "#c4b5fd"];
+const ROBOT_LEDS = ["#ffb454", "#5fbf7d", "#ff6f61", "#5b8def", "#ffffff"];
+const ROBOT_HATS = ["", "🎩", "👑", "🧢", "🎓", "🤠", "🎈", "🪖", "🎀", "🍕"];
+function sanitizeRobot(robot) {
+  if (!robot || typeof robot !== "object") return null;
+  const eye = ROBOT_EYES.includes(robot.eye) ? robot.eye : ROBOT_EYES[0];
+  const led = ROBOT_LEDS.includes(robot.led) ? robot.led : ROBOT_LEDS[0];
+  const hat = ROBOT_HATS.includes(robot.hat) ? robot.hat : "";
+  return { eye, led, hat };
+}
 function sanitizePrefs(prefs) {
   if (!prefs || typeof prefs !== "object") return null;
   const tone = TONES.includes(prefs.tone) ? prefs.tone : "any";
   const lang = LANGS.includes(prefs.lang) ? prefs.lang : "any";
   const favModel = MODEL_BY_ID[prefs.favModel] ? prefs.favModel : null;
-  return { tone, lang, favModel };
+  const robot = sanitizeRobot(prefs.robot);
+  return { tone, lang, favModel, robot };
 }
 function sanitizeTone(tone) {
   return TONES.includes(tone) && tone !== "any" ? tone : null;

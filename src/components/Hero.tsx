@@ -54,8 +54,9 @@ function PaperButton({
 }
 
 export default function Hero() {
-  const { go } = useGame();
+  const { go, profile } = useGame();
   const { t } = useI18n();
+  const robot = profile?.prefs?.robot;
   return (
     <section className="px-5 pt-6">
       <div className="mx-auto flex max-w-5xl flex-col items-center gap-10 md:flex-row md:items-center md:gap-16">
@@ -112,7 +113,12 @@ export default function Hero() {
           transition={{ delay: 0.2, duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
           className="shrink-0"
         >
-          <MonitorHead className="w-36 animate-float sm:w-44 md:w-52 lg:w-60" />
+          <MonitorHead
+            className="w-36 animate-float sm:w-44 md:w-52 lg:w-60"
+            eye={robot?.eye}
+            led={robot?.led}
+            hat={robot?.hat || undefined}
+          />
         </motion.div>
 
       </div>

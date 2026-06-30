@@ -228,6 +228,25 @@ const STRINGS: Record<Lang, Dict> = {
     hallVotes: "votos",
     hallFooled: "🎉 ¡engañó a la mayoría!",
     hallCaught: "🕵️ lo cazaron",
+    // modo token limit
+    cutoffToggle: "Modo Token Limit ✂️",
+    cutoffHint: "tu respuesta se corta de golpe, como la IA sin tokens",
+    cutoffBadge: "se quedó sin tokens",
+    // personalizá tu robot
+    robotTitle: "Personalizá tu robot",
+    robotEye: "color de pantalla",
+    robotLed: "color del LED",
+    robotHat: "sombrero",
+    // notificaciones pasivo-agresivas
+    nudges: [
+      "GePeTo-5 te extraña. ¿O preferís que te reemplace una IA de verdad?",
+      "Tu racha te está mirando. No la decepciones.",
+      "Hay humanos esperando que finjas ser IA. No seas tímido.",
+      "La IA real respondió 4 millones de prompts mientras leías esto.",
+      "El 0% de este juego usa IA. Sos vos. Siempre fuiste vos.",
+      "Groncho XL dijo que tu última respuesta fue 'meh'. Y Groncho XL no es nadie.",
+      "Una corona no se gana sola. Bueno, sí, pero quedaba dramático.",
+    ],
     // modelo a encarnar (pantalla Responder)
     embodyLabel: "ahora sos",
     modelParody: (p: string) => `parodia de ${p}`,
@@ -461,6 +480,25 @@ const STRINGS: Record<Lang, Dict> = {
     hallVotes: "votes",
     hallFooled: "🎉 fooled the majority!",
     hallCaught: "🕵️ got caught",
+    // token limit mode
+    cutoffToggle: "Token Limit Mode ✂️",
+    cutoffHint: "your answer cuts off abruptly, like AI out of tokens",
+    cutoffBadge: "ran out of tokens",
+    // customize your robot
+    robotTitle: "Customize your robot",
+    robotEye: "screen color",
+    robotLed: "LED color",
+    robotHat: "hat",
+    // passive-aggressive notifications
+    nudges: [
+      "GePeTo-5 misses you. Or would you rather a real AI replaced you?",
+      "Your streak is watching. Don't let it down.",
+      "Humans are waiting for you to fake being AI. Don't be shy.",
+      "Real AI answered 4 million prompts while you read this.",
+      "0% of this game uses AI. It's you. It was always you.",
+      "Groncho XL said your last answer was 'meh'. And Groncho XL is nobody.",
+      "A crown won't earn itself. Well, it will, but that sounded dramatic.",
+    ],
     // model to embody (Answer screen)
     embodyLabel: "you are now",
     modelParody: (p: string) => `parody of ${p}`,

@@ -45,6 +45,7 @@ db.exec(`
     rMeh   INTEGER NOT NULL DEFAULT 0,
     rSkull INTEGER NOT NULL DEFAULT 0,
     roast  INTEGER NOT NULL DEFAULT 0,
+    cutoff INTEGER NOT NULL DEFAULT 0,
     ts     INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS reactions (
@@ -86,6 +87,7 @@ for (const def of [
   "rMeh INTEGER NOT NULL DEFAULT 0",
   "rSkull INTEGER NOT NULL DEFAULT 0",
   "roast INTEGER NOT NULL DEFAULT 0",
+  "cutoff INTEGER NOT NULL DEFAULT 0",
 ]) addColumn("answers", def);
 
 // ---- Statements preparados / prepared statements ----
@@ -113,15 +115,15 @@ const stmtNickTaken = db.prepare(
 );
 
 const stmtInsertAnswer = db.prepare(
-  "INSERT INTO answers (id, prompt, answer, model, authorClientId, roast, ts) VALUES (?, ?, ?, ?, ?, ?, ?)"
+  "INSERT INTO answers (id, prompt, answer, model, authorClientId, roast, cutoff, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 );
 const stmtGetAnswer = db.prepare("SELECT * FROM answers WHERE id = ?");
 const stmtRecentAnswers = db.prepare(
-  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, ts FROM answers ORDER BY ts DESC LIMIT ?"
+  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers ORDER BY ts DESC LIMIT ?"
 );
 // Salón de la vergüenza: las notas con más votos 💀.
 const stmtHallOfShame = db.prepare(
-  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, ts FROM answers WHERE rSkull > 0 ORDER BY rSkull DESC, ts DESC LIMIT ?"
+  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE rSkull > 0 ORDER BY rSkull DESC, ts DESC LIMIT ?"
 );
 const stmtCountAnswers = db.prepare("SELECT COUNT(*) AS n FROM answers");
 const stmtTrimAnswers = db.prepare(
@@ -281,8 +283,8 @@ export function unlockAchievements(clientId, ids) {
 }
 
 // ---- Muro / wall ----
-export function pushAnswer({ id, prompt, answer, model, authorClientId, roast, ts }, cap) {
-  stmtInsertAnswer.run(id, prompt, answer, model ?? null, authorClientId ?? null, roast ? 1 : 0, ts);
+export function pushAnswer({ id, prompt, answer, model, authorClientId, roast, cutoff, ts }, cap) {
+  stmtInsertAnswer.run(id, prompt, answer, model ?? null, authorClientId ?? null, roast ? 1 : 0, cutoff ? 1 : 0, ts);
   if (cap) stmtTrimAnswers.run(cap);
 }
 export function recentAnswers(limit) {
@@ -428,6 +430,7 @@ function parseAnswer(a) {
     rMeh: a.rMeh,
     rSkull: a.rSkull,
     roast: a.roast,
+    cutoff: a.cutoff,
     ts: a.ts,
   };
 }

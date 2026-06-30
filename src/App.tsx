@@ -48,6 +48,17 @@ export default function App() {
     clearUnlocked();
   }, [unlocked]);
 
+  // Notificaciones pasivo-agresivas (estilo Duolingo villano) mientras estás en la home.
+  useEffect(() => {
+    if (screen !== "home") return;
+    const msgs = t("nudges") as string[];
+    if (!Array.isArray(msgs) || !msgs.length) return;
+    const id = window.setInterval(() => {
+      toast(`😈 ${msgs[Math.floor(Math.random() * msgs.length)]}`);
+    }, 70000);
+    return () => window.clearInterval(id);
+  }, [screen, t]);
+
   return (
     <div className="grain relative min-h-screen">
       <RoomScene />
