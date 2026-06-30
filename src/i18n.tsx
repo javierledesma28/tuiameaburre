@@ -14,6 +14,9 @@ const STRINGS: Record<Lang, Dict> = {
     heroTitle: "Tu IA me aburre.",
     heroSub:
       "Aquí no hay modelo entrenado. Hay una persona, un cuadro de texto y 60 segundos. Pregunta algo… y que un humano finja ser la IA.",
+    heroAria1: "Hola, te presento a A.R.I.A.,",
+    heroAria2: "la Aburrida Respuesta de Inteligencia Artificial.",
+    heroTyped: "Qué bueno que te asomaste. La curiosidad siempre nos encuentra. ¿Qué vamos a fingir hoy?",
     ask: "Preguntar",
     answer: "Responder como IA",
     askDesc: "Suelta un prompt. Un humano lo responderá fingiendo ser una IA.",
@@ -279,6 +282,9 @@ const STRINGS: Record<Lang, Dict> = {
     heroTitle: "Your AI bores me.",
     heroSub:
       "No trained model here. Just a person, a text box, and 60 seconds. Ask something… and let a human fake being the AI.",
+    heroAria1: "Hi, meet A.R.I.A.,",
+    heroAria2: "the Artificially Repetitive Insipid Assistant.",
+    heroTyped: "Glad you stopped by. Curiosity always finds us. What are we faking today?",
     ask: "Ask",
     answer: "Answer as AI",
     askDesc: "Drop a prompt. A human will answer it pretending to be an AI.",

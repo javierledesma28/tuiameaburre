@@ -79,6 +79,10 @@ export default {
           "0%,100%": { opacity: "1" },
           "50%": { opacity: "0" },
         },
+        "grid-scroll": {
+          from: { backgroundPosition: "0 0" },
+          to: { backgroundPosition: "0 46px" },
+        },
       },
       animation: {
         "fade-rise": "fade-rise 0.7s cubic-bezier(0.2,0.8,0.2,1) both",
@@ -88,6 +92,7 @@ export default {
         scan: "scan 7s linear infinite",
         float: "float 4s ease-in-out infinite",
         blink: "blink 1.2s step-end infinite",
+        "grid-scroll": "grid-scroll 1.6s linear infinite",
       },
     },
   },
