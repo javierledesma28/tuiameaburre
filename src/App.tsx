@@ -13,6 +13,7 @@ import Account from "./components/Account";
 import Leaderboard from "./components/Leaderboard";
 import Duel from "./components/Duel";
 import Hallucination from "./components/Hallucination";
+import Daily from "./components/Daily";
 import Confetti from "./components/Confetti";
 import { ACHIEVEMENT_BY_ID } from "./achievements";
 
@@ -26,6 +27,7 @@ const SCREENS: Record<string, React.ComponentType> = {
   ranking: Leaderboard,
   duel: Duel,
   halluc: Hallucination,
+  daily: Daily,
 };
 
 export default function App() {

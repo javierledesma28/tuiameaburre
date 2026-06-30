@@ -46,6 +46,7 @@ db.exec(`
     rSkull INTEGER NOT NULL DEFAULT 0,
     roast  INTEGER NOT NULL DEFAULT 0,
     cutoff INTEGER NOT NULL DEFAULT 0,
+    dailyDay TEXT,
     ts     INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS reactions (
@@ -88,6 +89,7 @@ for (const def of [
   "rSkull INTEGER NOT NULL DEFAULT 0",
   "roast INTEGER NOT NULL DEFAULT 0",
   "cutoff INTEGER NOT NULL DEFAULT 0",
+  "dailyDay TEXT",
 ]) addColumn("answers", def);
 
 // ---- Statements preparados / prepared statements ----
@@ -115,9 +117,16 @@ const stmtNickTaken = db.prepare(
 );
 
 const stmtInsertAnswer = db.prepare(
-  "INSERT INTO answers (id, prompt, answer, model, authorClientId, roast, cutoff, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  "INSERT INTO answers (id, prompt, answer, model, authorClientId, roast, cutoff, dailyDay, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 );
 const stmtGetAnswer = db.prepare("SELECT * FROM answers WHERE id = ?");
+// Respuestas al prompt del día (para la galería diaria).
+const stmtDailyAnswers = db.prepare(
+  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE dailyDay = ? ORDER BY ts DESC LIMIT ?"
+);
+const stmtHasDaily = db.prepare(
+  "SELECT id FROM answers WHERE dailyDay = ? AND authorClientId = ? LIMIT 1"
+);
 const stmtRecentAnswers = db.prepare(
   "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers ORDER BY ts DESC LIMIT ?"
 );
@@ -283,9 +292,18 @@ export function unlockAchievements(clientId, ids) {
 }
 
 // ---- Muro / wall ----
-export function pushAnswer({ id, prompt, answer, model, authorClientId, roast, cutoff, ts }, cap) {
-  stmtInsertAnswer.run(id, prompt, answer, model ?? null, authorClientId ?? null, roast ? 1 : 0, cutoff ? 1 : 0, ts);
+export function pushAnswer({ id, prompt, answer, model, authorClientId, roast, cutoff, dailyDay, ts }, cap) {
+  stmtInsertAnswer.run(
+    id, prompt, answer, model ?? null, authorClientId ?? null,
+    roast ? 1 : 0, cutoff ? 1 : 0, dailyDay ?? null, ts
+  );
   if (cap) stmtTrimAnswers.run(cap);
+}
+export function dailyAnswers(day, limit) {
+  return stmtDailyAnswers.all(day, limit);
+}
+export function hasDailyAnswer(clientId, day) {
+  return !!stmtHasDaily.get(day, clientId);
 }
 export function recentAnswers(limit) {
   return stmtRecentAnswers.all(limit);

@@ -24,6 +24,31 @@ export const SEED_PROMPTS = [
   "Convince me that pineapple belongs on pizza in one sentence.",
 ];
 
+// Prompts temáticos para el "Prompt del día": rotan por fecha, todos responden
+// el mismo. Daily themed prompts: rotate by date, everyone answers the same one.
+export const DAILY_PROMPTS = [
+  "Explicá por qué los lunes existen, como si fuera tu culpa.",
+  "Dame una conspiración inofensiva sobre las medias que desaparecen.",
+  "Escribí el horóscopo de hoy para alguien que no durmió nada.",
+  "Inventá una palabra nueva y su definición. Defendela con tu vida.",
+  "Convencé a un gato de que el lunes es un buen día.",
+  "Describí internet a alguien de 1850, en una sola frase.",
+  "Dame un consejo financiero terrible pero con mucha seguridad.",
+  "Escribí la peor frase para abrir una primera cita.",
+  "Justificá científicamente por qué merecés una siesta ahora.",
+  "Traducí 'no tengo ganas' al idioma más elegante posible.",
+  "Dame el nombre de una banda formada por electrodomésticos.",
+  "Explicá la gravedad usando solo metáforas de comida.",
+  "Escribí una reseña de 5 estrellas para el aire.",
+  "Inventá un feriado nuevo y por qué deberíamos tenerlo libre.",
+  "Dame una excusa épica para no contestar un mensaje hace 3 días.",
+  "Describí tu día como si fuera el trailer de una película.",
+  "Convertí 'voy en 5 minutos' en una promesa creíble.",
+  "Escribí un haiku sobre el wifi que se cae.",
+  "Dale un discurso motivacional a una planta que se está muriendo.",
+  "Inventá una ley de la física que solo aplique los domingos.",
+];
+
 // Respuestas de ejemplo para que el muro no nazca vacío.
 // Example answers so the wall isn't born empty.
 export const SEED_FEED = [

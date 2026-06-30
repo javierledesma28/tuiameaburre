@@ -237,6 +237,18 @@ const STRINGS: Record<Lang, Dict> = {
     robotEye: "color de pantalla",
     robotLed: "color del LED",
     robotHat: "sombrero",
+    // prompt del día
+    navDaily: "Hoy",
+    dailyTitle: "Prompt del día",
+    dailySub: "Un prompt para toda la comunidad. Cambia cada día. Sumá tu versión.",
+    dailyPromptLabel: "el desafío de hoy:",
+    dailySend: "responder",
+    dailyReward: "+2 créditos por participar",
+    dailyDone: "¡sumaste tu respuesta del día! ☀️",
+    dailyAlready: "ya respondiste el de hoy. mañana hay otro.",
+    dailyAnswered: "ya respondiste el desafío de hoy. volvé mañana 😉",
+    dailyGallery: "Las respuestas de hoy",
+    dailyEmpty: "nadie respondió todavía. abrí el juego.",
     // notificaciones pasivo-agresivas
     nudges: [
       "GePeTo-5 te extraña. ¿O preferís que te reemplace una IA de verdad?",
@@ -489,6 +501,18 @@ const STRINGS: Record<Lang, Dict> = {
     robotEye: "screen color",
     robotLed: "LED color",
     robotHat: "hat",
+    // prompt of the day
+    navDaily: "Today",
+    dailyTitle: "Prompt of the day",
+    dailySub: "One prompt for the whole community. Changes daily. Add your take.",
+    dailyPromptLabel: "today's challenge:",
+    dailySend: "answer",
+    dailyReward: "+2 credits for joining",
+    dailyDone: "your daily answer is in! ☀️",
+    dailyAlready: "you already answered today's. another one tomorrow.",
+    dailyAnswered: "you already answered today's challenge. come back tomorrow 😉",
+    dailyGallery: "Today's answers",
+    dailyEmpty: "nobody answered yet. kick it off.",
     // passive-aggressive notifications
     nudges: [
       "GePeTo-5 misses you. Or would you rather a real AI replaced you?",

@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 
-type NavId = "home" | "wall" | "creator" | "account" | "ranking" | "duel" | "halluc";
+type NavId = "home" | "wall" | "creator" | "account" | "ranking" | "duel" | "halluc" | "daily";
 
 export default function Nav() {
   const { credits, creditCap, screen, go, profile, coronas } = useGame();
@@ -74,6 +74,7 @@ export default function Nav() {
       {/* nav de escritorio / desktop nav */}
       <nav className="ml-2 hidden gap-5 sm:flex">
         {link("home", t("navHome"))}
+        {link("daily", t("navDaily"))}
         {link("wall", t("navWall"))}
         {link("duel", t("navDuel"))}
         {link("halluc", t("navHalluc"))}
@@ -168,6 +169,7 @@ export default function Nav() {
               <div className="paper relative flex min-w-[180px] flex-col gap-5 rounded-[6px] p-6 shadow-lift">
                 <span className="tape" style={{ right: 22, top: -11, transform: "rotate(5deg)" }} />
                 {mobileLink("home", t("navHome"))}
+                {mobileLink("daily", t("navDaily"))}
                 {mobileLink("wall", t("navWall"))}
                 {mobileLink("duel", t("navDuel"))}
                 {mobileLink("halluc", t("navHalluc"))}

@@ -17,7 +17,8 @@ export type Screen =
   | "account"
   | "ranking"
   | "duel"
-  | "halluc";
+  | "halluc"
+  | "daily";
 export type ReactionType = "up" | "bot" | "meh" | "skull";
 export type FeedItem = {
   id: string;
@@ -94,6 +95,8 @@ type GameCtx = {
   getHallucState: () => Promise<any>;
   submitHallucination: (answer: string) => Promise<any>;
   voteHallucination: (id: string, believe: boolean) => Promise<any>;
+  getDaily: () => Promise<any>;
+  submitDaily: (answer: string) => Promise<any>;
 };
 
 const Ctx = createContext<GameCtx>(null as any);
@@ -237,6 +240,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     getHallucState: () => emitAck("getHallucState", {}),
     submitHallucination: (answer) => emitAck("submitHallucination", { answer }),
     voteHallucination: (id, believe) => emitAck("voteHallucination", { id, believe }),
+    getDaily: () => emitAck("getDaily", {}),
+    submitDaily: (answer) => emitAck("submitDaily", { answer }),
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

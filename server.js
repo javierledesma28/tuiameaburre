@@ -9,7 +9,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import express from "express";
 import { Server as SocketServer } from "socket.io";
-import { SEED_PROMPTS, SEED_FEED } from "./seeds.js";
+import { SEED_PROMPTS, SEED_FEED, DAILY_PROMPTS } from "./seeds.js";
 import { pickModel, MODEL_BY_ID } from "./models.js";
 import {
   getUser as dbGetUser,
@@ -28,6 +28,8 @@ import {
   pushAnswer,
   recentAnswers as dbRecentAnswers,
   hallOfShame,
+  dailyAnswers,
+  hasDailyAnswer,
   answersCount,
   myReactions,
   react as dbReact,
@@ -289,8 +291,8 @@ function broadcastStats() {
   });
 }
 
-// Añade una respuesta al muro (memoria + DB) y la difunde.
-function pushFeed(prompt, answer, model, authorClientId, roast, cutoff) {
+// Añade una respuesta al muro (memoria + DB) y la difunde. Devuelve el item.
+function pushFeed(prompt, answer, model, authorClientId, roast, cutoff, dailyDay) {
   const item = {
     id: newId(),
     prompt,
@@ -299,6 +301,7 @@ function pushFeed(prompt, answer, model, authorClientId, roast, cutoff) {
     authorClientId: authorClientId || null,
     roast: roast ? 1 : 0,
     cutoff: cutoff ? 1 : 0,
+    dailyDay: dailyDay || null,
     rUp: 0,
     rBot: 0,
     rMeh: 0,
@@ -310,6 +313,18 @@ function pushFeed(prompt, answer, model, authorClientId, roast, cutoff) {
   pushAnswer(item, MAX_FEED);
   totalAnswered++;
   io.emit("feed:new", item);
+  return item;
+}
+
+// ---- Prompt del día / prompt of the day ----
+function dayKey(ts = Date.now()) {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+// Determinista por fecha: mismo prompt para todos ese día, rota cada día.
+function dailyPromptText() {
+  const days = Math.floor(Date.now() / 86400000);
+  return DAILY_PROMPTS[days % DAILY_PROMPTS.length];
 }
 
 // ---- Lógica de duelos / duel logic ----
@@ -687,6 +702,44 @@ io.on("connection", (socket) => {
   // Respuesta de la semana (la más reaccionada en 7 días).
   socket.on("getHighlight", (_payload, ack) => {
     ack?.({ ok: true, highlight: answerOfWeek() });
+  });
+
+  // --- Prompt del día / prompt of the day ---
+  socket.on("getDaily", (_payload, ack) => {
+    const clientId = socket.data.clientId;
+    const day = dayKey();
+    ack?.({
+      ok: true,
+      day,
+      prompt: dailyPromptText(),
+      answered: clientId ? hasDailyAnswer(clientId, day) : false,
+      items: dailyAnswers(day, 60),
+      myReactions: clientId ? myReactions(clientId) : {},
+    });
+  });
+
+  socket.on("submitDaily", (payload = {}, ack) => {
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const answer = String(payload.answer || "").trim().slice(0, 2000);
+    if (!answer) return ack?.({ ok: false, error: "empty" });
+    const day = dayKey();
+    if (hasDailyAnswer(clientId, day)) return ack?.({ ok: false, error: "already" });
+
+    const u = getUser(clientId);
+    const model = pickModel(u.prefs?.favModel);
+    const reward = 2; // participar en el reto diario da créditos
+    const after = addCredits(clientId, reward);
+    incAnswered(clientId);
+    addModelUsed(clientId, model.id);
+    bumpStreak(clientId);
+
+    const item = pushFeed(dailyPromptText(), answer, model.id, clientId, false, false, day);
+    io.emit("daily:new", item);
+    checkAchievements(clientId);
+    broadcastStats();
+    sendState(socket);
+    ack?.({ ok: true, credits: after, model });
   });
 
   // Salón de la vergüenza (las notas más votadas con 💀).
