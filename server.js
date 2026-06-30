@@ -27,6 +27,7 @@ import {
   unlockAchievements,
   pushAnswer,
   recentAnswers as dbRecentAnswers,
+  hallOfShame,
   answersCount,
   myReactions,
   react as dbReact,
@@ -281,13 +282,14 @@ function broadcastStats() {
 }
 
 // Añade una respuesta al muro (memoria + DB) y la difunde.
-function pushFeed(prompt, answer, model, authorClientId) {
+function pushFeed(prompt, answer, model, authorClientId, roast) {
   const item = {
     id: newId(),
     prompt,
     answer,
     model: model || null,
     authorClientId: authorClientId || null,
+    roast: roast ? 1 : 0,
     rUp: 0,
     rBot: 0,
     rMeh: 0,
@@ -595,6 +597,7 @@ io.on("connection", (socket) => {
       return ack?.({ ok: false, error: "not_yours" });
 
     const answer = String(payload.answer || "").trim().slice(0, 2000);
+    const roast = !!payload.roast;
     if (!answer) {
       requeue(job.prompt);
       return ack?.({ ok: false, error: "empty" });
@@ -628,7 +631,7 @@ io.on("connection", (socket) => {
       });
     }
 
-    pushFeed(job.prompt.text, answer, modelId, clientId);
+    pushFeed(job.prompt.text, answer, modelId, clientId, roast);
     broadcastStats();
     sendState(socket);
     ack?.({
@@ -644,6 +647,16 @@ io.on("connection", (socket) => {
   // Respuesta de la semana (la más reaccionada en 7 días).
   socket.on("getHighlight", (_payload, ack) => {
     ack?.({ ok: true, highlight: answerOfWeek() });
+  });
+
+  // Salón de la vergüenza (las notas más votadas con 💀).
+  socket.on("getHallOfShame", (_payload, ack) => {
+    const clientId = socket.data.clientId;
+    ack?.({
+      ok: true,
+      items: hallOfShame(30),
+      myReactions: clientId ? myReactions(clientId) : {},
+    });
   });
 
   // --- Modo Duelo / Duel mode ---

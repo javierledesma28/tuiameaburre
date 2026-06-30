@@ -9,6 +9,19 @@ import ShareButton from "./ShareButton";
 type Phase = "compose" | "waiting" | "result";
 const TONES = ["any", "gracioso", "serio", "poetico", "acido"];
 
+// Floritura paródica determinista (igual para la misma respuesta).
+function hashStr(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+function metaFlair(answer: string, disclaimers: string[]) {
+  const h = hashStr(answer);
+  const confidence = 71 + (h % 29); // 71–99%
+  const disclaimer = disclaimers[h % disclaimers.length];
+  return { confidence, disclaimer };
+}
+
 export default function Ask() {
   const { ask, cancelAsk, go, toast, credits, askCost, boost } = useGame();
   const { t } = useI18n();
@@ -69,17 +82,21 @@ export default function Ask() {
 
   const free = boost?.team === "human";
 
-  const submit = async () => {
-    const v = text.trim();
+  // Lanza una pregunta (reusado por enviar y por "regenerar").
+  const askPrompt = async (v: string) => {
     if (!v) return toast(t("emptyPrompt"));
     if (!free && credits < askCost) return toast(t("noCredits"));
     const res = await ask(v, tone);
     if (!res?.ok) return toast(res?.error === "no_credits" ? t("noCredits") : t("emptyPrompt"));
     pending.current = res.promptId;
     setEcho(v);
+    setAnswer("");
     setPhase("waiting");
     localStorage.setItem("pendingAsk", JSON.stringify({ promptId: res.promptId, echo: v }));
   };
+
+  const submit = () => askPrompt(text.trim());
+  const regenerate = () => askPrompt(echo); // misma pregunta → otro humano la responde
 
   const reset = () => {
     setText("");
@@ -201,12 +218,33 @@ export default function Ask() {
                   ))}
                 </span>
               ) : (
-                <p className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-[#cdffe0]">{answer}</p>
+                <>
+                  <p className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-[#cdffe0]">{answer}</p>
+                  {/* floritura paródica de IA / parody AI flourish */}
+                  {(() => {
+                    const f = metaFlair(answer, t("disclaimers") as string[]);
+                    return (
+                      <div className="mt-3 border-t border-[#8ff0b5]/15 pt-2 font-mono text-[10px] leading-relaxed text-[#8ff0b5]/45">
+                        <span>⚠️ {(t("confidence") as any)(f.confidence)}</span>
+                        <span className="mx-2">·</span>
+                        <span>💧 {t("waterUse")}</span>
+                        <p className="mt-1 italic">{f.disclaimer}</p>
+                      </div>
+                    );
+                  })()}
+                </>
               )}
             </div>
             <div className="mt-1 flex flex-wrap gap-3">
               <button onClick={reset} className="rounded-[4px] bg-sticky-yellow px-5 py-2 font-marker text-base text-paper-ink shadow-note">
                 {t("askAgain")}
+              </button>
+              <button
+                onClick={regenerate}
+                title={t("regenHint")}
+                className="rounded-[4px] border border-ink/20 px-5 py-2 font-marker text-base text-ink transition-transform hover:-translate-y-0.5"
+              >
+                🔄 {t("regen")}
               </button>
               <ShareButton prompt={echo} answer={answer} modelId={answerModel} />
               <button

@@ -21,6 +21,7 @@ export type FeedItem = {
   rBot?: number;
   rMeh?: number;
   rSkull?: number;
+  roast?: number;
   my?: ReactionType | null; // la reacción del cliente actual a esta nota
 };
 export type Stats = { online: number; totalAnswered: number; pending: number; boost?: Boost };
@@ -61,7 +62,7 @@ type GameCtx = {
   burst: () => void;
   ask: (text: string, tone?: string) => Promise<any>;
   requestJob: () => Promise<any>;
-  submitAnswer: (jobId: string, answer: string) => Promise<any>;
+  submitAnswer: (jobId: string, answer: string, roast?: boolean) => Promise<any>;
   skipJob: (jobId: string) => void;
   cancelAsk: (promptId: string) => void;
   register: (email: string, nick: string, prefs: Prefs, sex: string) => Promise<any>;
@@ -75,6 +76,7 @@ type GameCtx = {
     model?: string | null;
   }) => Promise<any>;
   getHighlight: () => Promise<any>;
+  getHallOfShame: () => Promise<any>;
   getDuelState: () => Promise<any>;
   submitDuelEntry: (answer: string) => Promise<any>;
   voteDuel: (duelId: string, side: "a" | "b") => Promise<any>;
@@ -206,7 +208,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     burst,
     ask: (text, tone) => emitAck("ask", { text, tone }),
     requestJob: () => emitAck("requestJob", {}),
-    submitAnswer: (jobId, answer) => emitAck("submitAnswer", { jobId, answer }),
+    submitAnswer: (jobId, answer, roast) => emitAck("submitAnswer", { jobId, answer, roast }),
     skipJob: (jobId) => socket.emit("skipJob", { jobId }),
     cancelAsk: (promptId) => socket.emit("cancelAsk", { promptId }),
     register: (email, nick, prefs, sex) => emitAck("register", { email, nick, prefs, sex }),
@@ -214,6 +216,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     react,
     getRanking: (filters) => emitAck("getRanking", filters),
     getHighlight: () => emitAck("getHighlight", {}),
+    getHallOfShame: () => emitAck("getHallOfShame", {}),
     getDuelState: () => emitAck("getDuelState", {}),
     submitDuelEntry: (answer) => emitAck("submitDuelEntry", { answer }),
     voteDuel: (duelId, side) => emitAck("voteDuel", { duelId, side }),

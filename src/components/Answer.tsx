@@ -19,6 +19,7 @@ export default function Answer() {
   const [reward, setReward] = useState("");
   const [secs, setSecs] = useState(60);
   const [model, setModel] = useState<Model | null>(null);
+  const [roast, setRoast] = useState(false);
   const jobId = useRef<string | null>(null);
   const timer = useRef<number | undefined>(undefined);
   const deadline = useRef(0);
@@ -88,7 +89,7 @@ export default function Answer() {
     if (!jobId.current) return;
     const v = text.trim();
     if (!v) return toast(t("emptyAnswer"));
-    const res = await submitAnswer(jobId.current, v);
+    const res = await submitAnswer(jobId.current, v, roast);
     if (!res?.ok) {
       if (res?.error === "expired") {
         stopTimer();
@@ -193,6 +194,25 @@ export default function Answer() {
               </div>
             </div>
 
+            {/* Modo Roast: en vez de responder, destruí el prompt 🔥 */}
+            <button
+              onClick={() => setRoast((r) => !r)}
+              className={`mb-3 flex w-full items-center gap-2 rounded-[5px] border px-3 py-2 text-left transition-colors ${
+                roast ? "border-marker-red bg-marker-red/10" : "border-ink/15 hover:border-marker-red/50"
+              }`}
+            >
+              <span className="text-xl">🔥</span>
+              <span className="min-w-0">
+                <span className={`block font-marker text-base leading-tight ${roast ? "text-marker-red" : "text-ink"}`}>
+                  {t("roastToggle")}
+                </span>
+                <span className="block font-hand text-base leading-tight text-muted">{t("roastHint")}</span>
+              </span>
+              <span className={`ml-auto h-5 w-9 shrink-0 rounded-full p-0.5 transition-colors ${roast ? "bg-marker-red" : "bg-ink/20"}`}>
+                <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${roast ? "translate-x-4" : ""}`} />
+              </span>
+            </button>
+
             <div className="crt rounded-[5px] p-4 shadow-note">
               <textarea
                 ref={taRef}
@@ -201,7 +221,7 @@ export default function Answer() {
                 onKeyDown={(e) => (e.metaKey || e.ctrlKey) && e.key === "Enter" && submit()}
                 maxLength={2000}
                 rows={4}
-                placeholder={t("answerPlaceholder")}
+                placeholder={roast ? t("roastPlaceholder") : t("answerPlaceholder")}
                 className="w-full resize-none bg-transparent font-mono text-sm leading-relaxed text-[#cdffe0] outline-none placeholder:text-[#8ff0b5]/40"
               />
               <div className="flex items-center justify-between pt-2">

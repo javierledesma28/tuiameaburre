@@ -56,6 +56,11 @@ function Note({ item }: { item: FeedItem }) {
       style={{ background: NOTE_BG[h % NOTE_BG.length], rotate: ROT[h % ROT.length] }}
     >
       <span className="pin absolute left-1/2 top-2 -translate-x-1/2" />
+      {item.roast ? (
+        <span className="absolute right-2 top-2 -rotate-6 rounded-full bg-marker-red px-2 py-0.5 font-marker text-[10px] text-white shadow-note">
+          🔥 ROAST
+        </span>
+      ) : null}
       <p className="mb-2 line-clamp-3 font-mono text-[11px] leading-snug text-paper-ink/60">
         <span className="text-marker-red">&gt; </span>
         {item.prompt}

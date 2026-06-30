@@ -190,6 +190,26 @@ const STRINGS: Record<Lang, Dict> = {
     duelSelf: "no podés votar tu propio duelo",
     duelWinner: "🏆 ¡tenemos ganador!",
     duelTie: "🤝 empate técnico",
+    // roast mode
+    roastToggle: "Modo Roast 🔥",
+    roastHint: "en vez de responder, destruí el prompt",
+    roastPlaceholder: "destruí este prompt sin piedad…",
+    // salón de la vergüenza
+    shameTitle: "Salón de la vergüenza",
+    shameSub: "las respuestas más caóticas, votadas con 💀. un honor dudoso.",
+    // toques meta de parodia IA
+    confidence: (n: number) => `${n}% seguro… de algo`,
+    waterUse: "0 litros de agua (es un humano deshidratado)",
+    regen: "regenerar",
+    regenHint: "otra persona responde lo mismo",
+    disclaimers: [
+      "La IA puede cometer errores. Este humano, garantizado.",
+      "No se consultó ninguna fuente. Tampoco había ganas.",
+      "Generado con 0 redes neuronales y mucha cafeína.",
+      "Esta IA no se responsabiliza por tus decisiones de vida.",
+      "Entrenada con los traumas de una sola persona.",
+      "Cualquier parecido con la realidad es pura coincidencia estadística.",
+    ],
     // modelo a encarnar (pantalla Responder)
     embodyLabel: "ahora sos",
     modelParody: (p: string) => `parodia de ${p}`,
@@ -385,6 +405,26 @@ const STRINGS: Record<Lang, Dict> = {
     duelSelf: "you can't vote your own duel",
     duelWinner: "🏆 we have a winner!",
     duelTie: "🤝 technical tie",
+    // roast mode
+    roastToggle: "Roast Mode 🔥",
+    roastHint: "instead of answering, destroy the prompt",
+    roastPlaceholder: "roast this prompt mercilessly…",
+    // hall of shame
+    shameTitle: "Hall of Shame",
+    shameSub: "the most chaotic answers, voted with 💀. a dubious honor.",
+    // AI parody meta touches
+    confidence: (n: number) => `${n}% confident… of something`,
+    waterUse: "0 liters of water (it's a dehydrated human)",
+    regen: "regenerate",
+    regenHint: "another person answers the same",
+    disclaimers: [
+      "AI can make mistakes. This human, guaranteed.",
+      "No sources were consulted. No desire to, either.",
+      "Generated with 0 neural networks and lots of caffeine.",
+      "This AI is not liable for your life choices.",
+      "Trained on the traumas of a single person.",
+      "Any resemblance to reality is pure statistical coincidence.",
+    ],
     // model to embody (Answer screen)
     embodyLabel: "you are now",
     modelParody: (p: string) => `parody of ${p}`,
