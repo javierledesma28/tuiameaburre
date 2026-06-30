@@ -4,6 +4,7 @@ import { socket } from "../lib/socket";
 import { useGame } from "../game";
 import { useI18n } from "../i18n";
 import BoostBanner from "./BoostBanner";
+import ShareButton from "./ShareButton";
 
 type Phase = "compose" | "waiting" | "result";
 const TONES = ["any", "gracioso", "serio", "poetico", "acido"];
@@ -16,6 +17,7 @@ export default function Ask() {
   const [tone, setTone] = useState("any");
   const [echo, setEcho] = useState("");
   const [answer, setAnswer] = useState("");
+  const [answerModel, setAnswerModel] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const pending = useRef<string | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -41,12 +43,13 @@ export default function Ask() {
   }, []);
 
   useEffect(() => {
-    const onAnswer = ({ promptId, prompt, answer }: any) => {
+    const onAnswer = ({ promptId, prompt, answer, model }: any) => {
       if (promptId !== pending.current) return;
       pending.current = null;
       localStorage.removeItem("pendingAsk");
       setEcho(prompt);
       setAnswer(answer);
+      setAnswerModel(model || null);
       setPhase("result");
       setTyping(true);
       window.setTimeout(() => setTyping(false), Math.min(1600, 600 + answer.length * 12));
@@ -201,10 +204,11 @@ export default function Ask() {
                 <p className="whitespace-pre-wrap font-mono text-sm leading-relaxed text-[#cdffe0]">{answer}</p>
               )}
             </div>
-            <div className="mt-1 flex gap-3">
+            <div className="mt-1 flex flex-wrap gap-3">
               <button onClick={reset} className="rounded-[4px] bg-sticky-yellow px-5 py-2 font-marker text-base text-paper-ink shadow-note">
                 {t("askAgain")}
               </button>
+              <ShareButton prompt={echo} answer={answer} modelId={answerModel} />
               <button
                 onClick={() => navigator.clipboard?.writeText(echo + "\n\n" + answer).then(() => toast(t("copied")))}
                 className="rounded-[4px] border border-ink/20 px-5 py-2 font-marker text-base text-ink"

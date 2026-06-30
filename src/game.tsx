@@ -70,6 +70,7 @@ type GameCtx = {
     sex?: string | null;
     model?: string | null;
   }) => Promise<any>;
+  getHighlight: () => Promise<any>;
 };
 
 const Ctx = createContext<GameCtx>(null as any);
@@ -188,6 +189,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     updatePrefs: (prefs, sex) => emitAck("updatePrefs", { prefs, sex }),
     react,
     getRanking: (filters) => emitAck("getRanking", filters),
+    getHighlight: () => emitAck("getHighlight", {}),
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -144,6 +144,14 @@ const STRINGS: Record<Lang, Dict> = {
     allSexes: "todes",
     rankLoading: "cargando el podio…",
     rankEmpty: "todavía nadie acá. sé el primero.",
+    // compartir
+    share: "compartir",
+    sharing: "generando…",
+    shareDownloaded: "imagen descargada 📸",
+    shareError: "no se pudo generar la imagen",
+    // respuesta de la semana
+    weekTitle: "Respuesta de la semana",
+    weekSub: "la más votada de los últimos 7 días",
     // modelo a encarnar (pantalla Responder)
     embodyLabel: "ahora sos",
     modelParody: (p: string) => `parodia de ${p}`,
@@ -293,6 +301,14 @@ const STRINGS: Record<Lang, Dict> = {
     allSexes: "all",
     rankLoading: "loading the podium…",
     rankEmpty: "nobody here yet. be the first.",
+    // share
+    share: "share",
+    sharing: "generating…",
+    shareDownloaded: "image downloaded 📸",
+    shareError: "couldn't generate the image",
+    // answer of the week
+    weekTitle: "Answer of the week",
+    weekSub: "the most voted in the last 7 days",
     // model to embody (Answer screen)
     embodyLabel: "you are now",
     modelParody: (p: string) => `parody of ${p}`,

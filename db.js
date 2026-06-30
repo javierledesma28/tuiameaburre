@@ -330,6 +330,20 @@ export function topPlayers({ category, period, country, sex, model, limit = 50 }
   return db.prepare(sql).all(...params);
 }
 
+// La nota más reaccionada de los últimos 7 días (respuesta de la semana).
+const stmtAnswerOfWeek = db.prepare(`
+  SELECT a.* FROM answers a
+  JOIN (
+    SELECT answerId, COUNT(*) AS c FROM reactions
+    WHERE ts >= ? GROUP BY answerId ORDER BY c DESC LIMIT 1
+  ) top ON top.answerId = a.id
+`);
+export function answerOfWeek() {
+  const cutoff = Date.now() - 7 * 86400000;
+  const a = stmtAnswerOfWeek.get(cutoff);
+  return a ? parseAnswer(a) : null;
+}
+
 function prevTypeOf(answerId, voterClientId) {
   return stmtGetReaction.get(answerId, voterClientId)?.type || null;
 }

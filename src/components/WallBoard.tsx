@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { FeedItem, ReactionType, useGame } from "../game";
 import { useI18n } from "../i18n";
 import { MODEL_BY_ID } from "../models";
+import ShareButton from "./ShareButton";
 
 const NOTE_BG = ["#ffe27a", "#ffb3c8", "#bdec8a", "#a9d8ff", "#f3e9d2"];
 const ROT = ["-2deg", "1.5deg", "-1deg", "2.5deg", "-2.5deg", "1deg"];
@@ -88,6 +89,9 @@ function Note({ item }: { item: FeedItem }) {
             </button>
           );
         })}
+        <span className="ml-auto">
+          <ShareButton prompt={item.prompt} answer={item.answer} modelId={item.model} compact />
+        </span>
       </div>
     </motion.div>
   );

@@ -26,6 +26,7 @@ import {
   myReactions,
   react as dbReact,
   topPlayers,
+  answerOfWeek,
 } from "./db.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -515,6 +516,11 @@ io.on("connection", (socket) => {
       boosted: aiBoost > 1,
       model: job.model || null,
     });
+  });
+
+  // Respuesta de la semana (la más reaccionada en 7 días).
+  socket.on("getHighlight", (_payload, ack) => {
+    ack?.({ ok: true, highlight: answerOfWeek() });
   });
 
   // --- Ranking público / public leaderboard ---
