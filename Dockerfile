@@ -16,7 +16,7 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
-COPY server.js seeds.js db.js models.js ./
+COPY server.js seeds.js db.js models.js bots.js ./
 RUN mkdir -p /app/data
 EXPOSE 5050
 ENV NODE_ENV=production
