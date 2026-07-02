@@ -11,10 +11,12 @@ import express from "express";
 import { Server as SocketServer } from "socket.io";
 import { SEED_PROMPTS, SEED_FEED, DAILY_PROMPTS } from "./seeds.js";
 import { pickModel, MODEL_BY_ID } from "./models.js";
+import { BOTS, botClientId, pickBot, templateAnswer, templatePrompt } from "./bots.js";
 import {
   getUser as dbGetUser,
   setCredits,
   addCoronas,
+  ensureBot,
   upsertProfile,
   setPrefs as dbSetPrefs,
   setCountry,
@@ -54,6 +56,14 @@ const MAX_FEED = 40; // tamaño del muro / wall size
 // Balance: how many real queued prompts trigger the AI-team boost.
 const BOOST_AI_THRESHOLD = 3;
 const BOOST_MULT = 2;
+
+// ---- Bots de arranque / bootstrap bots ----
+const BOTS_ENABLED = process.env.BOTS_ENABLED !== "false"; // kill-switch global
+// Si nadie humano toma un prompt en este tiempo, responde un bot (prioridad humana).
+const BOT_ANSWER_DELAY = Number(process.env.BOT_ANSWER_DELAY_MS || 10000);
+// Cada cuánto un bot suelta un prompt cuando la cola real está floja.
+const BOT_ASK_INTERVAL = Number(process.env.BOT_ASK_INTERVAL_MS || 30000);
+const botAnswerTimers = new Map(); // promptId -> timeout (cancelable si lo toma un humano)
 
 // ---- Estado en memoria (lo efímero) / In-memory state (the ephemeral bits) ----
 const queue = []; // prompts pendientes: { id, text, askerClientId, seed, tone, boostedAsk, createdAt }
@@ -164,6 +174,26 @@ function computeBoost() {
   return null;
 }
 
+// Presencia inflada (cosmético): deriva suave hacia un objetivo aleatorio para que
+// el contador "online" nunca se vea vacío al arrancar. Solo afecta el número mostrado.
+let fakeOnline = 22;
+let fakeTarget = 22;
+function retargetFake() {
+  fakeTarget = 15 + Math.floor(Math.random() * 14) + Math.floor(Math.random() * 8); // ~15–35
+}
+function driftFake() {
+  if (fakeOnline < fakeTarget) fakeOnline += Math.min(2, fakeTarget - fakeOnline);
+  else if (fakeOnline > fakeTarget) fakeOnline -= Math.min(2, fakeOnline - fakeTarget);
+}
+if (BOTS_ENABLED) {
+  retargetFake();
+  setInterval(retargetFake, 45000);
+  setInterval(() => {
+    driftFake();
+    broadcastStats();
+  }, 12000);
+}
+
 // Construye el payload de estado para un cliente / builds the state payload.
 function stateFor(clientId) {
   const u = getUser(clientId);
@@ -239,12 +269,15 @@ function pickPromptFor(clientId) {
   const wantTone = u.prefs?.tone && u.prefs.tone !== "any" ? u.prefs.tone : null;
   const others = (p) => p.askerClientId !== clientId;
 
+  // Prioridad: prompt HUMANO con tono que matchea → cualquier humano → bot → semilla.
+  const human = (p) => !p.seed && !p.bot;
   let idx = -1;
   if (wantTone) {
-    idx = queue.findIndex((p) => !p.seed && others(p) && p.tone === wantTone);
+    idx = queue.findIndex((p) => human(p) && others(p) && p.tone === wantTone);
   }
-  if (idx === -1) idx = queue.findIndex((p) => !p.seed && others(p));
-  if (idx === -1) idx = queue.findIndex((p) => others(p));
+  if (idx === -1) idx = queue.findIndex((p) => human(p) && others(p)); // humanos primero
+  if (idx === -1) idx = queue.findIndex((p) => !p.seed && others(p)); // luego bots
+  if (idx === -1) idx = queue.findIndex((p) => others(p)); // por último, semilla
   if (idx === -1) return null;
   return queue.splice(idx, 1)[0];
 }
@@ -284,7 +317,7 @@ function sendStateToClient(clientId) {
 // Difunde estadísticas globales (incluye el estado del boost) a todos.
 function broadcastStats() {
   io.emit("stats", {
-    online: io.engine.clientsCount,
+    online: io.engine.clientsCount + (BOTS_ENABLED ? fakeOnline : 0),
     totalAnswered,
     pending: pendingRealCount(),
     boost: computeBoost(),
@@ -314,6 +347,68 @@ function pushFeed(prompt, answer, model, authorClientId, roast, cutoff, dailyDay
   totalAnswered++;
   io.emit("feed:new", item);
   return item;
+}
+
+// ---- Bots: responder y preguntar / bots: answer and ask ----
+// Genera la respuesta de un bot para un prompt. En Fase 1 es plantilla; en Fase 2
+// esto lo reemplaza el cerebro LLM (Haiku) con fallback a plantilla.
+async function botGenerateAnswer(_promptText, _model) {
+  return templateAnswer();
+}
+
+// Un bot toma un prompt que ningún humano agarró y lo responde (prioridad humana:
+// solo se llama cuando el prompt sigue en la cola tras el delay).
+async function botRespondToPrompt(prompt) {
+  const i = queue.findIndex((p) => p.id === prompt.id);
+  if (i === -1) return; // ya lo tomó un humano
+  queue.splice(i, 1);
+  const bot = pickBot();
+  const model = MODEL_BY_ID[bot.model] || pickModel(null);
+  const answer = await botGenerateAnswer(prompt.text, model);
+  // Se entrega y publica por el flujo normal: el humano lo ve como "IA (un humano)".
+  if (!prompt.seed && !prompt.bot) {
+    deliverAnswer(prompt.askerClientId, {
+      promptId: prompt.id,
+      prompt: prompt.text,
+      answer,
+      model: model.id,
+    });
+  }
+  pushFeed(prompt.text, answer, model.id, botClientId(bot), false, false);
+  broadcastStats();
+}
+
+function scheduleBotAnswer(prompt) {
+  if (!BOTS_ENABLED) return;
+  const t = setTimeout(() => {
+    botAnswerTimers.delete(prompt.id);
+    botRespondToPrompt(prompt);
+  }, BOT_ANSWER_DELAY);
+  botAnswerTimers.set(prompt.id, t);
+}
+function cancelBotAnswer(promptId) {
+  const t = botAnswerTimers.get(promptId);
+  if (t) {
+    clearTimeout(t);
+    botAnswerTimers.delete(promptId);
+  }
+}
+
+// Un bot suelta un prompt cuando la cola real está floja, para que quien responde
+// siempre tenga con qué. Parece un humano preguntando (no es "semilla de práctica").
+function botAskOne() {
+  const bot = pickBot();
+  queue.push({
+    id: newId(),
+    text: templatePrompt(),
+    askerClientId: botClientId(bot),
+    seed: false,
+    bot: true,
+    tone: null,
+    boostedAsk: false,
+    createdAt: Date.now(),
+  });
+  broadcastStats();
 }
 
 // ---- Prompt del día / prompt of the day ----
@@ -435,7 +530,8 @@ function requeue(prompt) {
 function refundAsk(prompt) {
   const clientId = typeof prompt === "string" ? prompt : prompt?.askerClientId;
   const free = typeof prompt === "object" && prompt?.boostedAsk;
-  if (!clientId || clientId === "seed" || free) return;
+  // Sin reembolso para semilla, bots, o preguntas gratis (boost humano).
+  if (!clientId || clientId === "seed" || clientId.startsWith("bot:") || free) return;
   addCredits(clientId, ASK_COST);
   sendStateToClient(clientId);
 }
@@ -567,6 +663,7 @@ io.on("connection", (socket) => {
       createdAt: Date.now(),
     };
     queue.push(prompt);
+    scheduleBotAnswer(prompt); // si ningún humano lo toma a tiempo, responde un bot
     sendState(socket);
     broadcastStats();
     ack?.({ ok: true, promptId: prompt.id, free });
@@ -579,6 +676,7 @@ io.on("connection", (socket) => {
     if (i === -1) return;
     if (queue[i].seed || queue[i].askerClientId !== clientId) return;
     const [prompt] = queue.splice(i, 1);
+    cancelBotAnswer(prompt.id);
     refundAsk(prompt);
     broadcastStats();
   });
@@ -595,6 +693,7 @@ io.on("connection", (socket) => {
 
     const prompt = pickPromptFor(clientId);
     if (!prompt) return ack?.({ ok: false, error: "no_jobs" });
+    cancelBotAnswer(prompt.id); // lo tomó un humano → el bot ya no responde
 
     // El humano "encarna" un modelo: su favorito si lo eligió, si no aleatorio.
     const u = getUser(clientId);
@@ -677,7 +776,8 @@ io.on("connection", (socket) => {
     checkAchievements(clientId, { insomne: hr >= 3 && hr < 5 });
 
     // Entrega la respuesta a quien preguntó (ahora o cuando se reconecte).
-    if (!job.prompt.seed) {
+    // Los prompts de bots (bot:true) no entregan: no hay humano esperando.
+    if (!job.prompt.seed && !job.prompt.bot) {
       deliverAnswer(job.prompt.askerClientId, {
         promptId: job.prompt.id,
         prompt: job.prompt.text,
@@ -919,6 +1019,18 @@ if (answersCount() === 0) {
 }
 for (const row of dbRecentAnswers(MAX_FEED)) recentAnswers.push(row);
 totalAnswered = recentAnswers.length;
+
+// Alta de los bots como usuarios reales (nick único) + país, marcados isBot=1.
+if (BOTS_ENABLED) {
+  for (const bot of BOTS) {
+    ensureBot(botClientId(bot), bot.nick, START_CREDITS);
+    setCountry(botClientId(bot), bot.country, START_CREDITS);
+  }
+  // Loop: si la cola real está floja, un bot suelta un prompt (da trabajo a quien responde).
+  setInterval(() => {
+    if (pendingRealCount() < 2 && io.engine.clientsCount > 0) botAskOne();
+  }, BOT_ASK_INTERVAL);
+}
 
 ensureSeeds();
 server.listen(PORT, () => {

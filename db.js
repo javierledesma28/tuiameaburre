@@ -32,6 +32,7 @@ db.exec(`
     achievements  TEXT,
     modelsUsed    TEXT,
     brokeCount    INTEGER NOT NULL DEFAULT 0,
+    isBot         INTEGER NOT NULL DEFAULT 0,
     createdAt     INTEGER NOT NULL
   );
   CREATE TABLE IF NOT EXISTS answers (
@@ -80,6 +81,7 @@ for (const def of [
   "achievements TEXT",
   "modelsUsed TEXT",
   "brokeCount INTEGER NOT NULL DEFAULT 0",
+  "isBot INTEGER NOT NULL DEFAULT 0",
 ]) addColumn("users", def);
 for (const def of [
   "authorClientId TEXT",
@@ -235,6 +237,13 @@ export function isNickTaken(nick, clientId) {
   return !!stmtNickTaken.get(nick, clientId);
 }
 
+// Crea/marca un usuario como bot (fila real para nick único; excluido del ranking).
+const stmtSetBot = db.prepare("UPDATE users SET isBot = 1, nick = ? WHERE clientId = ?");
+export function ensureBot(clientId, nick, startCredits) {
+  getUser(clientId, startCredits);
+  stmtSetBot.run(nick, clientId);
+}
+
 // ---- Racha, modelos usados, logros / streak, models used, achievements ----
 const stmtSetStreak = db.prepare(
   "UPDATE users SET streakDays = ?, lastPlayedDay = ? WHERE clientId = ?"
@@ -374,6 +383,7 @@ export function topPlayers({ category, period, country, sex, model, limit = 50 }
     `r.type IN (${types.map(() => "?").join(",")})`,
     "u.nick IS NOT NULL",
     "r.authorClientId IS NOT NULL",
+    "IFNULL(u.isBot, 0) = 0", // los bots no aparecen en el ranking
   ];
   const params = [...types];
 
