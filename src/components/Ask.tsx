@@ -42,12 +42,16 @@ export default function Ask() {
     if (raw) {
       try {
         const saved = JSON.parse(raw);
-        if (saved?.promptId) {
+        // Solo retomamos esperas recientes: pasados ~4 min ese prompt ya no
+        // existe en la cola del server y esperaría para siempre.
+        const fresh = saved?.ts && Date.now() - saved.ts < 4 * 60 * 1000;
+        if (saved?.promptId && fresh) {
           pending.current = saved.promptId;
           setEcho(saved.echo || "");
           setPhase("waiting");
           return;
         }
+        localStorage.removeItem("pendingAsk");
       } catch {
         localStorage.removeItem("pendingAsk");
       }
@@ -92,7 +96,7 @@ export default function Ask() {
     setEcho(v);
     setAnswer("");
     setPhase("waiting");
-    localStorage.setItem("pendingAsk", JSON.stringify({ promptId: res.promptId, echo: v }));
+    localStorage.setItem("pendingAsk", JSON.stringify({ promptId: res.promptId, echo: v, ts: Date.now() }));
   };
 
   const submit = () => askPrompt(text.trim());

@@ -116,11 +116,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [achievements, setAchievements] = useState<string[]>([]);
   const [unlocked, setUnlocked] = useState<string[]>([]);
   const [profile, setProfile] = useState<Profile>(null);
-  // Si quedó una pregunta esperando respuesta (p. ej. recargó la página),
-  // volvemos directo a la pantalla de Preguntar para retomar la espera.
-  const [screen, setScreen] = useState<Screen>(() =>
-    localStorage.getItem("pendingAsk") ? "ask" : "home"
-  );
+  // Siempre arrancamos en Inicio. (Si quedó una pregunta reciente en espera,
+  // la pantalla de Preguntar la retoma sola cuando el usuario entra ahí.)
+  const [screen, setScreen] = useState<Screen>("home");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [confettiKey, setConfettiKey] = useState(0);
   const toastTimer = useRef<number | undefined>(undefined);
