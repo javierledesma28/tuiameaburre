@@ -60,6 +60,10 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_reactions_author ON reactions(authorClientId);
   CREATE INDEX IF NOT EXISTS idx_reactions_ts ON reactions(ts);
+  CREATE TABLE IF NOT EXISTS bot_spend (
+    month TEXT PRIMARY KEY,
+    usd   REAL NOT NULL DEFAULT 0
+  );
 `);
 
 // Migración idempotente para DBs ya desplegadas (SQLite no tiene ADD COLUMN IF
@@ -242,6 +246,23 @@ const stmtSetBot = db.prepare("UPDATE users SET isBot = 1, nick = ? WHERE client
 export function ensureBot(clientId, nick, startCredits) {
   getUser(clientId, startCredits);
   stmtSetBot.run(nick, clientId);
+}
+
+// ---- Gasto de bots (LLM) por mes / bot LLM spend per month ----
+function monthKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+const stmtAddSpend = db.prepare(
+  "INSERT INTO bot_spend (month, usd) VALUES (?, ?) ON CONFLICT(month) DO UPDATE SET usd = usd + excluded.usd"
+);
+const stmtGetSpend = db.prepare("SELECT usd FROM bot_spend WHERE month = ?");
+export function addSpend(usd) {
+  if (!usd || usd <= 0) return;
+  stmtAddSpend.run(monthKey(), usd);
+}
+export function spendThisMonth() {
+  return stmtGetSpend.get(monthKey())?.usd || 0;
 }
 
 // ---- Racha, modelos usados, logros / streak, models used, achievements ----

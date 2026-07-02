@@ -7,6 +7,11 @@ services:
       PORT: "5050"
       NODE_ENV: "production"
       DB_PATH: "/app/data/tuia.db"
+      # Bots (opcional): sin ANTHROPIC_API_KEY responden con plantillas (gratis).
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      BOTS_ENABLED: "${BOTS_ENABLED:-true}"
+      BOT_LLM_ENABLED: "${BOT_LLM_ENABLED:-true}"
+      BOT_BUDGET_USD: "${BOT_BUDGET_USD:-20}"
     volumes:
       - tuia-data:/app/data
     networks:

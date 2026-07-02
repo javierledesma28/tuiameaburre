@@ -11,12 +11,22 @@ import express from "express";
 import { Server as SocketServer } from "socket.io";
 import { SEED_PROMPTS, SEED_FEED, DAILY_PROMPTS } from "./seeds.js";
 import { pickModel, MODEL_BY_ID } from "./models.js";
-import { BOTS, botClientId, pickBot, templateAnswer, templatePrompt } from "./bots.js";
+import {
+  BOTS,
+  botClientId,
+  pickBot,
+  templateAnswer,
+  templatePrompt,
+  llmAvailable,
+  botAnswerLLM,
+} from "./bots.js";
 import {
   getUser as dbGetUser,
   setCredits,
   addCoronas,
   ensureBot,
+  addSpend,
+  spendThisMonth,
   upsertProfile,
   setPrefs as dbSetPrefs,
   setCountry,
@@ -63,6 +73,8 @@ const BOTS_ENABLED = process.env.BOTS_ENABLED !== "false"; // kill-switch global
 const BOT_ANSWER_DELAY = Number(process.env.BOT_ANSWER_DELAY_MS || 10000);
 // Cada cuánto un bot suelta un prompt cuando la cola real está floja.
 const BOT_ASK_INTERVAL = Number(process.env.BOT_ASK_INTERVAL_MS || 30000);
+// Tope de gasto mensual del LLM de bots (US$). Al alcanzarlo, cae a plantillas.
+const BOT_BUDGET_USD = Number(process.env.BOT_BUDGET_USD || 20);
 const botAnswerTimers = new Map(); // promptId -> timeout (cancelable si lo toma un humano)
 
 // ---- Estado en memoria (lo efímero) / In-memory state (the ephemeral bits) ----
@@ -350,9 +362,16 @@ function pushFeed(prompt, answer, model, authorClientId, roast, cutoff, dailyDay
 }
 
 // ---- Bots: responder y preguntar / bots: answer and ask ----
-// Genera la respuesta de un bot para un prompt. En Fase 1 es plantilla; en Fase 2
-// esto lo reemplaza el cerebro LLM (Haiku) con fallback a plantilla.
-async function botGenerateAnswer(_promptText, _model) {
+// Genera la respuesta de un bot. Usa Claude Haiku si hay API key, el kill-switch
+// está encendido y no se superó el presupuesto mensual; si no, cae a plantilla.
+async function botGenerateAnswer(promptText, model) {
+  if (llmAvailable() && spendThisMonth() < BOT_BUDGET_USD) {
+    const res = await botAnswerLLM(promptText, model);
+    if (res && res.text) {
+      addSpend(res.costUsd);
+      return res.text;
+    }
+  }
   return templateAnswer();
 }
 
