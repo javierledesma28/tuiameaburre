@@ -46,6 +46,7 @@ import {
   myReactions,
   react as dbReact,
   topPlayers,
+  bubblePlayers,
   answerOfWeek,
 } from "./db.js";
 
@@ -821,6 +822,20 @@ io.on("connection", (socket) => {
   // Respuesta de la semana (la más reaccionada en 7 días).
   socket.on("getHighlight", (_payload, ack) => {
     ack?.({ ok: true, highlight: answerOfWeek() });
+  });
+
+  // Mapa de burbujas (circle packing) — jugadores con sus stats (sin exponer isBot).
+  socket.on("getBubbles", (_payload, ack) => {
+    const players = bubblePlayers(140).map((u) => ({
+      nick: u.nick,
+      country: u.country || null,
+      sex: u.sex || null,
+      human: u.coronasHuman || 0,
+      ai: u.coronasAi || 0,
+      games: (u.gamesAnswered || 0) + (u.gamesAsked || 0),
+      model: u.prefs?.favModel || null,
+    }));
+    ack?.({ ok: true, players });
   });
 
   // --- Prompt del día / prompt of the day ---

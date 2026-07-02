@@ -14,6 +14,7 @@ import Leaderboard from "./components/Leaderboard";
 import Duel from "./components/Duel";
 import Hallucination from "./components/Hallucination";
 import Daily from "./components/Daily";
+import Bubbles from "./components/Bubbles";
 import Confetti from "./components/Confetti";
 import { ACHIEVEMENT_BY_ID } from "./achievements";
 
@@ -28,6 +29,7 @@ const SCREENS: Record<string, React.ComponentType> = {
   duel: Duel,
   halluc: Hallucination,
   daily: Daily,
+  map: Bubbles,
 };
 
 export default function App() {

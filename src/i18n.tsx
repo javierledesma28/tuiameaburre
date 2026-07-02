@@ -131,6 +131,16 @@ const STRINGS: Record<Lang, Dict> = {
     reactSkull: "demasiado IA",
     reactSelf: "no podés votar tu propia respuesta",
     coronasHint: "ganás coronas cuando reaccionan a tus respuestas",
+    // mapa de burbujas (circle packing)
+    navMap: "Galaxia",
+    mapTitle: "La Galaxia",
+    mapSub: "Cada burbuja es un humano fingiendo ser IA. Más grande = más coronas.",
+    mapByModel: "🎭 por modelo",
+    mapByCountry: "🌎 por país",
+    mapByTeam: "🧠 vs 🤖 bando",
+    mapLoading: "reuniendo a la manada…",
+    mapEmpty: "todavía no hay nadie orbitando. sé el primero 🛸",
+    mapGames: "partidas",
     // ranking
     navRanking: "Ranking",
     rankTitle: "Ranking mundial",
@@ -398,6 +408,16 @@ const STRINGS: Record<Lang, Dict> = {
     reactSkull: "too AI",
     reactSelf: "you can't vote your own answer",
     coronasHint: "you earn crowns when people react to your answers",
+    // bubble map (circle packing)
+    navMap: "Galaxy",
+    mapTitle: "The Galaxy",
+    mapSub: "Every bubble is a human pretending to be an AI. Bigger = more crowns.",
+    mapByModel: "🎭 by model",
+    mapByCountry: "🌎 by country",
+    mapByTeam: "🧠 vs 🤖 team",
+    mapLoading: "gathering the herd…",
+    mapEmpty: "nobody orbiting yet. be the first 🛸",
+    mapGames: "games",
     // ranking
     navRanking: "Ranking",
     rankTitle: "World ranking",

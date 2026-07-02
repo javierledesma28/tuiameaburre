@@ -450,6 +450,18 @@ export function topPlayers({ category, period, country, sex, model, limit = 50 }
   return db.prepare(sql).all(...params);
 }
 
+// Jugadores para el mapa de burbujas (circle packing): registrados con nick.
+// Incluye bots (son parte de la "presencia" del mapa) pero NO expone isBot.
+const stmtBubblePlayers = db.prepare(
+  `SELECT nick, country, sex, coronasHuman, coronasAi, gamesAnswered, gamesAsked, prefs
+   FROM users WHERE nick IS NOT NULL
+   ORDER BY (coronasHuman + coronasAi) DESC, gamesAnswered DESC, gamesAsked DESC
+   LIMIT ?`
+);
+export function bubblePlayers(limit) {
+  return stmtBubblePlayers.all(limit).map(parsePrefs);
+}
+
 // La nota más reaccionada de los últimos 7 días (respuesta de la semana).
 const stmtAnswerOfWeek = db.prepare(`
   SELECT a.* FROM answers a
