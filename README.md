@@ -1,92 +1,139 @@
 <div align="center">
 
-```
-  ████████╗██╗   ██╗    ██╗ █████╗     ███╗   ███╗ █████╗ ██╗      █████╗      ██████╗ ███╗   ██╗██████╗  █████╗ 
-  ╚══██╔══╝██║   ██║    ██║██╔══██╗    ████╗ ████║██╔══██╗██║     ██╔══██╗    ██╔═══██╗████╗  ██║██╔══██╗██╔══██╗
-     ██║   ██║   ██║    ██║███████║    ██╔████╔██║███████║██║     ███████║    ██║   ██║██╔██╗ ██║██║  ██║███████║
-     ██║   ██║   ██║    ██║██╔══██║    ██║╚██╔╝██║██╔══██║██║     ██╔══██║   ██║   ██║██║╚██╗██║██║  ██║██╔══██║
-     ██║   ╚██████╔╝    ██║██║  ██║    ██║ ╚═╝ ██║██║  ██║███████╗██║  ██║   ╚██████╔╝██║ ╚████║██████╔╝██║  ██║
-     ╚═╝    ╚═════╝     ╚═╝╚═╝  ╚═╝   ╚═╝     ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚═════╝ ╚═╝  ╚═╝
-```
+<img src="docs/robot.png" alt="A.R.I.A. — el robot con cabeza de monitor" width="380" />
 
-### 🤖 El juego donde los humanos fingen ser IA · y lo hacen fatal
+# Tu IA me aburre
 
-[![Live](https://img.shields.io/badge/🌐_JUGAR_AHORA-tuiameaburre.com-black?style=for-the-badge)](https://tuiameaburre.com)
-[![IA usada](https://img.shields.io/badge/IA_usada-0%25-red?style=for-the-badge&logo=openai&logoColor=white)](https://tuiameaburre.com)
-[![Hecho a las](https://img.shields.io/badge/Hecho_a_las-3am-blueviolet?style=for-the-badge)](https://github.com/javierledesma28/tuiameaburre)
-[![Node](https://img.shields.io/badge/Node.js-20-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
-[![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
-[![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?style=for-the-badge&logo=socket.io)](https://socket.io)
+### El juego donde los humanos fingen ser IA · y la rompen fingiendo mal
+
+*Porque tu IA será rápida, pero no te va a decir "no tengo idea, pero con mucha confianza" con el corazón.*
+
+<br/>
+
+[![JUGAR AHORA](https://img.shields.io/badge/🕹️_JUGAR_AHORA-tuiameaburre.com-000000?style=for-the-badge)](https://tuiameaburre.com)
+[![IA usada](https://img.shields.io/badge/IA_usada-0%25-e5484d?style=for-the-badge)](https://tuiameaburre.com)
+[![Hecho a las](https://img.shields.io/badge/Hecho_a_las-3_AM-7c3aed?style=for-the-badge)](#)
+[![Mate consumido](https://img.shields.io/badge/Mate_consumido-∞-3d9970?style=for-the-badge)](#)
+
+[![React](https://img.shields.io/badge/React_18-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-010101?style=flat-square&logo=socket.io)](https://socket.io)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)](https://www.sqlite.org)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare_Tunnel-F38020?style=flat-square&logo=cloudflare&logoColor=white)](https://www.cloudflare.com)
 
 </div>
 
 ---
 
-## ¿Qué es esto?
+## 🤔 ¿Qué es esta locura?
 
-**Tu IA me aburre** es un experimento social disfrazado de juego:
+Che, **Tu IA me aburre** es un experimento social disfrazado de jueguito de madrugada.
 
-> 💬 Alguien escribe un prompt como si se lo diera a ChatGPT.  
-> 🤖 Otra persona —un humano real, en este momento— tiene **60 segundos** para responder *fingiendo* ser una IA.  
-> 😐 El resultado es, inevitablemente, una IA bastante mala onda.
+> 💬 Vos escribís un prompt como si se lo tiraras a ChatGPT.
+> 🧠 Del otro lado, **una persona real, en este preciso instante**, tiene **60 segundos** para responderte *fingiendo* ser una IA.
+> 😐 El resultado es, indefectiblemente, una IA con menos ganas que empleado público un viernes a las 13:59.
 
-Es el **test de Turing al revés**: en vez de adivinar si es IA, todos saben que es humano, y aun así siguen jugando. Hay algo inquietante en eso.
+Es el **test de Turing al vesre**: nadie tiene que adivinar si es una IA. Todos saben que es un humano. Y aun así seguimos jugando. Hay algo profundamente perturbador —y hermoso— en eso.
 
-Inspirado en [_Your AI Slop Bores Me_](https://youraislopbores.me/). Construido como sátira al _AI slop_ que inunda internet.
-
----
-
-## Cómo se juega
-
-| Modo | Lo que pasa | Créditos |
-|------|-------------|----------|
-| 💬 **Preguntar** | Mandás un prompt. Algún desconocido lo recibe y tiene 60 s para responder como "IA". | **−1 crédito** |
-| 🤖 **Responder como IA** | Te cae el prompt de alguien. Tenés que sonar convincentemente artificial. O no. Da igual. | **+1–2 créditos** |
-
-- Empezás con **3 créditos**, tope **10**
-- Sin créditos → respondé para ganar más
-- Los 60 s vencen → el prompt vuelve a la cola
-- **El corcho** 📌 → muro en vivo con todas las respuestas reales de humanos-IA
-
-> Hay prompts de práctica (semilla) para que puedas jugar aunque estés solo a las 4am en tu cuarto.
+Inspirado en [_Your AI Slop Bores Me_](https://youraislopbores.me/). Nació como cachetada de guante blanco al *slop* de IA genérica que inunda internet.
 
 ---
 
-## El vibe
+## 🎮 Cómo se juega (spoiler: es re fácil)
 
-No es otro SaaS con gradientes rosas y "powered by AI".
+| Modo | Qué onda | Créditos |
+|------|----------|:--------:|
+| 💬 **Preguntar** | Tirás un prompt. Le cae a un desconocido que tiene 60 s para hacerse el robot. | **−1** |
+| 🤖 **Responder como IA** | Te toca el prompt de alguien. Soná convincentemente artificial. O no. A nadie le importa. | **+1 a +2** |
 
-La estética es la habitación de quien programó esto de madrugada:
+- Arrancás con **3 créditos**, tope **10**.
+- ¿Te quedaste seco? Respondé como IA y recargás.
+- ¿Se te vencieron los 60 segundos? El prompt vuelve a la cola y quedás como el que dejó el visto.
+- **Boost de balance:** cuando un equipo está flojo de papeles, el otro rinde el doble. Democracia pura.
+
+> Y sí, aunque entres a las 4 AM y no haya un alma, siempre hay con quién jugar. Guiño, guiño. 🤫
+
+---
+
+## ✨ Todo lo que te vas a encontrar adentro
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🃏 5 modelos "parodia"**
+Encarná a **GePeTo-5**, **Claudio Soneto**, **Géminis Ascendente**, **LaLlama** o **Groncho XL**. Cualquier parecido con la realidad es pura mala intención.
+
+**🏆 Ranking mundial + coronas**
+El Mejor Humano y la Mejor IA del planeta. Filtros por país, sexo y modelo. Coronas 🧠 y 🤖 que se ganan cuando reaccionan a tus respuestas.
+
+**📌 El corcho**
+Muro en vivo con todas las respuestas reales. Reaccioná con 👍 🤖 😐 💀.
+
+**⚔️ Modo Duelo**
+Dos humanos, el mismo prompt, la gente vota en vivo. El que finge mejor se lleva la gloria.
+
+</td>
+<td width="50%" valign="top">
+
+**🌀 Modo Alucinación**
+Inventá un dato falso y hacé que te crean. Si engañás a la mayoría, sos leyenda.
+
+**🌌 La Galaxia**
+Un mapa de burbujas donde cada jugador orbita según sus coronas. Filtrá por modelo, país o bando.
+
+**🔥 Roast Mode & ✂️ Token Limit**
+Contestá con maldad, o cortá la respuesta a la mitad como buena IA tacaña.
+
+**💀 Salón de la Vergüenza**
+Las peores respuestas, inmortalizadas. Un honor dudoso.
+
+**🗓️ Prompt del día · 🏅 Logros · 🔥 Rachas · 🤖 Personalizá tu robot**
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🛋️ El vibe
+
+Esto **no** es otro SaaS con gradientes violetas y un "powered by AI" en el footer.
+
+La estética es, literalmente, la pieza de quien programó esto de madrugada:
 
 ```
 🪔  Lámpara cálida en la esquina
-🪟  Ventana de noche con lucecitas
-📌  Corcho con notas adhesivas
+🪟  Ventana de noche con estrellitas
+📌  Corcho con notas y washi tape
 🖥️  Monitor CRT con fósforo verde
-📝  Washi tape y garabatos en papel
+✍️  Garabatos a mano sobre papel crema
 ```
 
-El robot de la pantalla de inicio tiene una cabeza de monitor. Sigue tu cursor con los ojos.
-Juzga en silencio.
+El robot de la portada —**A.R.I.A.**, *Aburrida Respuesta de Inteligencia Artificial*— tiene cabeza de monitor, te sigue con la mirada y te juzga en silencio. Es lo más parecido al amor.
 
 ---
 
-## Stack técnico
+## 🛠️ Stack (para los que miran el código, no el diseño)
 
 ```
-Frontend  →  React 18 + TypeScript + Vite + Tailwind CSS + Framer Motion
-Backend   →  Node.js + Express + Socket.IO (estado 100% en memoria)
-Fuentes   →  Permanent Marker · Caveat · Space Mono (lo que se esperaría)
-Deploy    →  Docker (multi-stage build) + Cloudflare Tunnel
-Repo      →  Este que estás viendo
-IA        →  Ninguna (el punto)
+Frontend  →  React 18 · TypeScript · Vite · Tailwind CSS · Framer Motion · d3-hierarchy
+Backend   →  Node.js · Express · Socket.IO
+Datos     →  SQLite (better-sqlite3) — cuentas, coronas, muro, ranking
+Bots      →  Claude Haiku 4.5 para el arranque en frío (con tope de presupuesto y kill-switch)
+Fuentes   →  Permanent Marker · Shantell Sans · Space Mono
+Deploy    →  Docker (multi-stage) + Cloudflare Tunnel
+IA en el juego  →  Cero. Ese es TODO el punto.
 ```
+
+> Sí, hay un modelo de IA en el código. No, no responde por vos. Solo cubre los huecos cuando todavía no hay suficiente gente adentro, para que nunca entres a un cuarto vacío. Cuando la fiesta arranca, se va a dormir. 🤖💤
 
 ---
 
-## Correr localmente
+## 🚀 Correlo en tu máquina
 
-**Requisitos:** Node.js ≥ 18
+**Requisito:** Node.js ≥ 18
 
 ```bash
 git clone git@github.com:javierledesma28/tuiameaburre.git
@@ -95,86 +142,67 @@ npm install
 npm run dev
 ```
 
-Abre **http://localhost:5175** y el backend queda en :5050.  
-Para jugar solo: abrí otra pestaña en incógnito y jugá los dos roles vos mismo. Sí, da un poco de pena. Pero funciona.
+- **Frontend:** http://localhost:5175
+- **Backend:** :5050
+- La base SQLite se crea sola en `./data/` (está en el `.gitignore`, tranqui).
+
+¿Querés jugar solo? Abrí una pestaña en incógnito y jugá los dos roles vos mismo. Da un poquito de pena, pero funciona. No se lo contamos a nadie.
 
 ### Producción
 
 ```bash
-npm run build   # compila React → /dist
-npm start       # Express sirve /dist + Socket.IO en :5050
+npm run build      # compila React → /dist
+npm start          # Express sirve /dist + Socket.IO en :5050
 ```
 
-### Docker
+### Docker (así corre en la vida real)
 
 ```bash
-docker compose up -d   # build multi-stage + cloudflared tunnel
+docker compose up -d   # build multi-stage + túnel de Cloudflare
 ```
 
-El `docker-compose.yml` ya incluye el container de Cloudflare Tunnel.  
-Configurá `CLOUDFLARE_TUNNEL_TOKEN` en `.env` (ver `.env.example`).
+Configurá tu `.env` a partir de `.env.example` (token del túnel, y opcionalmente la API key de Anthropic para los bots).
 
 ---
 
-## Estructura del repo
+## ❓ FAQ honesto
 
-```
-tuiameaburre/
-├── 🖥️  server.js              # matchmaking · cola · timers · créditos · muro · stats
-├── 🌱  seeds.js               # prompts de práctica y respuestas de ejemplo
-├── 🐳  Dockerfile             # multi-stage: builder (Vite) → prod (solo Express)
-├── 🐳  docker-compose.yml     # app + cloudflared tunnel
-├── src/
-│   ├── App.tsx                # layout · transiciones · confeti · toast
-│   ├── game.tsx               # estado global + socket actions
-│   ├── i18n.tsx               # traducciones ES / EN
-│   └── components/
-│       ├── MonitorHead.tsx    # 🤖 el robot con cabeza de monitor (sigue tu cursor)
-│       ├── RoomScene.tsx      # 🪔 el cuarto de madrugada (SVG/CSS, sin assets)
-│       ├── Hero.tsx           # landing principal
-│       ├── Ask.tsx            # pantalla de preguntar
-│       ├── Answer.tsx         # pantalla de responder (con timer)
-│       ├── WallBoard.tsx      # 📌 corcho con notas
-│       └── ScrambleText.tsx   # texto que "se genera" como una IA
-└── legacy-vanilla/            # 🗿 versión anterior en HTML/CSS/JS puro (congelada)
-```
+<details>
+<summary><b>¿Por qué existe esto?</b></summary><br/>
+Porque el 95% de lo que la gente llama "IA" se podría reemplazar por una persona con suficiente cafeína y poco amor propio. Esto es la demostración jugable.
+</details>
 
----
+<details>
+<summary><b>¿Se guardan mis cosas si recargo?</b></summary><br/>
+Sí. Ahora hay SQLite de verdad: cuentas, créditos, coronas y muro persisten. Ya no lloramos cada vez que se reinicia el server.
+</details>
 
-## FAQ honesto
+<details>
+<summary><b>¿Puedo hacer trampa y responder como humano en vez de como IA?</b></summary><br/>
+Amigo, eso es literalmente lo que hace todo el mundo. <i>Ese</i> es el juego.
+</details>
 
-**¿Por qué?**  
-Porque el 95% de lo que la gente llama "IA" podría reemplazarse por una persona con suficiente cafeína y poco amor propio.
+<details>
+<summary><b>¿Hay API?</b></summary><br/>
+Socket.IO. Los eventos están todos en <code>server.js</code>. No hay REST porque vivimos en el presente.
+</details>
 
-**¿Los créditos persisten si recargo la página?**  
-Sí, vía `clientId` en `localStorage`. No hay base de datos. Si el server se reinicia, todos volvemos a cero y nadie habla de eso.
-
-**¿Puedo hacer trampa y responder como humano en vez de como IA?**  
-Eso es exactamente lo que hace todo el mundo. Ese es el juego.
-
-**¿Hay una API?**  
-Socket.IO. Los eventos están documentados en `server.js`. No hay REST porque vivimos en el presente.
-
-**¿Cuándo sale la versión con base de datos?**  
-Cuando deje de ser "más adelante".
-
----
-
-## Ideas para el futuro que quizás nunca pasen
-
-- 🎨 Lienzo para responder con garabatos (respuesta visual como IA)
-- 🏆 Ranking de "mejor humano-IA" de la semana
-- 😂 Reacciones en el corcho (👍 / 🤖 / 😐)
-- 🔊 Sonido lo-fi ambient opcional
-- 💾 Persistencia en base de datos (algún día)
+<details>
+<summary><b>¿Realmente no usa IA para responderme?</b></summary><br/>
+Del otro lado siempre hay un humano cuando hay gente jugando. Los bots con IA solo tapan el bache del arranque en frío, y son invisibles a propósito. Cuando la comunidad respira sola, se apagan.
+</details>
 
 ---
 
 <div align="center">
 
-**[tuiameaburre.com](https://tuiameaburre.com)** · hecho a mano · de madrugada
+### 🧑‍💻 Hecho por un humano
 
-*Cero IA fue usada o herida en la producción de este juego.*  
-*Los humanos que respondieron como IA sí sufrieron un poco.*
+Un proyecto de **[Javier Ledesma](https://linkedin.com/in/ledesmajavier)** · a mano · de madrugada · con mate.
+
+**[▶ tuiameaburre.com](https://tuiameaburre.com)**
+
+<sub>Cero IA fue usada o herida en la producción de este juego.<br/>
+Los humanos que respondieron como IA, en cambio, sufrieron bastante.</sub>
 
 </div>
