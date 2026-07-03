@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/robot.png" alt="A.R.I.A. — el robot con cabeza de monitor" width="380" />
+<a href="https://tuiameaburre.com"><img src="docs/shots/hero.gif" alt="A.R.I.A. — el robot con cabeza de monitor te da la bienvenida" width="760" /></a>
 
 # Tu IA me aburre
 
@@ -37,6 +37,21 @@ Che, **Tu IA me aburre** es un experimento social disfrazado de jueguito de madr
 Es el **test de Turing al vesre**: nadie tiene que adivinar si es una IA. Todos saben que es un humano. Y aun así seguimos jugando. Hay algo profundamente perturbador —y hermoso— en eso.
 
 Inspirado en [_Your AI Slop Bores Me_](https://youraislopbores.me/). Nació como cachetada de guante blanco al *slop* de IA genérica que inunda internet.
+
+---
+
+## 📸 Un vistazo
+
+<table>
+<tr>
+<td width="50%"><img src="docs/shots/corcho.png" alt="El corcho — muro de respuestas reales" /><br/><sub><b>📌 El corcho</b> · respuestas reales de humanos fingiendo ser IA</sub></td>
+<td width="50%"><img src="docs/shots/galaxia.png" alt="La Galaxia — mapa de burbujas" /><br/><sub><b>🌌 La Galaxia</b> · cada jugador es una burbuja que orbita según sus coronas</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/shots/ranking.png" alt="Ranking mundial" /><br/><sub><b>🏆 Ranking mundial</b> · el mejor humano y la mejor IA del planeta</sub></td>
+<td width="50%"><img src="docs/shots/home.png" alt="Pantalla de inicio con A.R.I.A." /><br/><sub><b>🏠 Inicio</b> · te recibe A.R.I.A. en su cuarto de madrugada</sub></td>
+</tr>
+</table>
 
 ---
 
@@ -191,6 +206,29 @@ Socket.IO. Los eventos están todos en <code>server.js</code>. No hay REST porqu
 <summary><b>¿Realmente no usa IA para responderme?</b></summary><br/>
 Del otro lado siempre hay un humano cuando hay gente jugando. Los bots con IA solo tapan el bache del arranque en frío, y son invisibles a propósito. Cuando la comunidad respira sola, se apagan.
 </details>
+
+---
+
+## 🤝 ¿Querés meter mano?
+
+Bienvenido sea, che. Esto es un proyecto de una sola persona hecho a puro mate, así que toda ayuda suma.
+
+**Formas de sumar:**
+- 🐛 **Encontraste un bug** → abrí un [issue](https://github.com/javierledesma28/tuiameaburre/issues) contando cómo reproducirlo.
+- 💡 **Tenés una idea de modo o feature** → tirala en un issue. Cuanto más disparatada, mejor. Este proyecto se alimenta de ideas de madrugada.
+- 🧑‍💻 **Querés mandar código** → forkeá, laburá en una rama (`feat/mi-locura`) y mandá un Pull Request.
+
+**Antes de mandar un PR, un mini-checklist:**
+
+```bash
+npm run build      # tiene que compilar (tsc + vite) sin romperse
+```
+
+- 🎭 **Mantené el mood:** humor, estética de cuarto de madrugada y **cero IA respondiendo por el usuario**. Ese es el corazón del juego.
+- 🌍 **Todo bilingüe:** los textos viven en `src/i18n.tsx` (ES/EN). Si sumás una pantalla, sumá los dos idiomas.
+- 📝 **Commits en español** están perfectos. No hace falta que seas formal.
+
+¿Dudas? Escribime por [LinkedIn](https://linkedin.com/in/ledesmajavier). No muerdo — soy humano, lo prometo. 🤖
 
 ---
 
