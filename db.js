@@ -389,6 +389,25 @@ export function getAnswerById(id) {
   return stmtGetAnswer.get(id) || null;
 }
 
+// Backup online (consistente con WAL) a un archivo con timestamp; poda los viejos.
+// Nota: el backup va al mismo volumen; para desastre total, copiá el volumen aparte.
+export function backupTo(dir, keep = 14) {
+  fs.mkdirSync(dir, { recursive: true });
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 16); // YYYY-MM-DDTHH-mm
+  const dest = path.join(dir, `tuia-${stamp}.db`);
+  return db.backup(dest).then(() => {
+    const files = fs.readdirSync(dir).filter((f) => /^tuia-.*\.db$/.test(f)).sort();
+    while (files.length > keep) {
+      try {
+        fs.unlinkSync(path.join(dir, files.shift()));
+      } catch {
+        /* ignore */
+      }
+    }
+    return dest;
+  });
+}
+
 // Reacciones del cliente a un set de notas → { answerId: type }.
 export function myReactions(clientId) {
   const out = {};

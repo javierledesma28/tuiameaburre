@@ -53,6 +53,7 @@ import {
   addReport,
   hideAnswer,
   getAnswerById,
+  backupTo,
 } from "./db.js";
 import helmet from "helmet";
 import { rateLimit, startRateLimitGc, connOpen, connClose, ipOf, LIMITS } from "./security.js";
@@ -353,8 +354,23 @@ app.disable("x-powered-by");
 // dejamos que las imágenes/tarjetas se puedan embeber cross-origin (previews sociales).
 app.use(
   helmet({
-    contentSecurityPolicy: false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        // El build de Vite sirve JS/CSS propios (hashed). React usa estilos inline
+        // (style={}), y las fuentes vienen de Google Fonts. Socket.IO usa wss.
+        "script-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
+        "img-src": ["'self'", "data:", "blob:"],
+        "connect-src": ["'self'", "ws:", "wss:"],
+        "object-src": ["'none'"],
+        "base-uri": ["'self'"],
+        "frame-ancestors": ["'none'"], // anti-clickjacking (más fuerte que X-Frame-Options)
+        "upgrade-insecure-requests": [],
+      },
+    },
   })
 );
 // En producción servimos el build de Vite (/dist); si no existe, /public.
@@ -428,11 +444,20 @@ function removeFromFeed(id) {
 // ---- Bots: responder y preguntar / bots: answer and ask ----
 // Genera la respuesta de un bot. Usa Claude Haiku si hay API key, el kill-switch
 // está encendido y no se superó el presupuesto mensual; si no, cae a plantilla.
+let budgetWarned = false;
 async function botGenerateAnswer(promptText, model) {
   if (llmAvailable() && spendThisMonth() < BOT_BUDGET_USD) {
     const res = await botAnswerLLM(promptText, model);
     if (res && res.text) {
       addSpend(res.costUsd);
+      const spent = spendThisMonth();
+      // Alerta al cruzar el 80% del presupuesto mensual (una vez).
+      if (!budgetWarned && spent >= BOT_BUDGET_USD * 0.8) {
+        budgetWarned = true;
+        console.warn(
+          `[budget] ⚠️ Bots LLM al ${Math.round((spent / BOT_BUDGET_USD) * 100)}% del presupuesto ($${spent.toFixed(2)}/$${BOT_BUDGET_USD}). Al 100% caen a plantillas.`
+        );
+      }
       return res.text;
     }
   }
@@ -1226,6 +1251,19 @@ if (BOTS_ENABLED) {
     if (pendingRealCount() < 2 && io.engine.clientsCount > 0) botAskOne();
   }, BOT_ASK_INTERVAL);
 }
+
+// Backup periódico de la DB (cada 6h + uno diferido al arrancar). Va a data/backups
+// dentro del volumen; para desastre total conviene copiar el volumen fuera del host.
+const BACKUP_DIR = path.join(
+  path.dirname(process.env.DB_PATH || path.join(__dirname, "data", "tuia.db")),
+  "backups"
+);
+const runBackup = () =>
+  backupTo(BACKUP_DIR)
+    .then((f) => console.log(`[backup] DB respaldada → ${f}`))
+    .catch((e) => console.warn("[backup] falló:", e.message));
+setTimeout(runBackup, 10000).unref?.();
+setInterval(runBackup, 6 * 3600 * 1000).unref?.();
 
 // Limpieza de rate-limits y poda de juegos en memoria (duelos/alucinaciones cerrados)
 // para acotar el uso de memoria a largo plazo.

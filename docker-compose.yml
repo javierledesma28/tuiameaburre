@@ -12,6 +12,11 @@ services:
       BOTS_ENABLED: "${BOTS_ENABLED:-true}"
       BOT_LLM_ENABLED: "${BOT_LLM_ENABLED:-true}"
       BOT_BUDGET_USD: "${BOT_BUDGET_USD:-20}"
+      # Seguridad / moderación
+      CLIENT_SECRET: "${CLIENT_SECRET:-}"
+      MAX_CONN_PER_IP: "${MAX_CONN_PER_IP:-30}"
+      REPORT_HIDE_THRESHOLD: "${REPORT_HIDE_THRESHOLD:-3}"
+      ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
     volumes:
       - tuia-data:/app/data
     networks:
