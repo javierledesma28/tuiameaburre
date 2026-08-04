@@ -19,7 +19,8 @@ export type Screen =
   | "duel"
   | "halluc"
   | "daily"
-  | "map";
+  | "map"
+  | "legal";
 export type ReactionType = "up" | "bot" | "meh" | "skull";
 export type FeedItem = {
   id: string;

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useGame } from "./game";
 import { useI18n } from "./i18n";
@@ -15,6 +15,7 @@ import Duel from "./components/Duel";
 import Hallucination from "./components/Hallucination";
 import Daily from "./components/Daily";
 import Bubbles from "./components/Bubbles";
+import Legal from "./components/Legal";
 import Confetti from "./components/Confetti";
 import { ACHIEVEMENT_BY_ID } from "./achievements";
 
@@ -30,12 +31,22 @@ const SCREENS: Record<string, React.ComponentType> = {
   halluc: Hallucination,
   daily: Daily,
   map: Bubbles,
+  legal: Legal,
 };
 
 export default function App() {
-  const { screen, confettiKey, toastMsg, toast, unlocked, clearUnlocked } = useGame();
+  const { screen, confettiKey, toastMsg, toast, unlocked, clearUnlocked, go } = useGame();
   const { t } = useI18n();
   const Current = SCREENS[screen];
+
+  // Aviso único de almacenamiento local (solo funcional; no cookies de rastreo).
+  const [storageAck, setStorageAck] = useState(
+    typeof window !== "undefined" ? !!localStorage.getItem("privacyAck") : true
+  );
+  const ackStorage = () => {
+    localStorage.setItem("privacyAck", "1");
+    setStorageAck(true);
+  };
 
   // Al cambiar de pantalla, volvemos arriba (la versión vanilla lo hacía).
   useEffect(() => {
@@ -87,12 +98,38 @@ export default function App() {
 
         <footer className="mx-auto max-w-3xl px-5 py-10 text-center font-hand text-base text-muted/70 sm:text-lg">
           {t("footer")}
-          <div className="mt-3 flex justify-center gap-5 font-mono text-sm text-muted/50">
+          <div className="mt-3 flex flex-wrap justify-center gap-5 font-mono text-sm text-muted/50">
             <a href="https://github.com/javierledesma28/tuiameaburre" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-muted/90">github</a>
             <a href="https://linkedin.com/in/ledesmajavier" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-muted/90">linkedin</a>
+            <button onClick={() => go("legal")} className="transition-colors hover:text-muted/90">{t("navLegal")}</button>
           </div>
         </footer>
       </div>
+
+      {/* Aviso único de almacenamiento local (funcional, sin rastreo) */}
+      <AnimatePresence>
+        {!storageAck && (
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 30 }}
+            className="fixed inset-x-3 bottom-3 z-[80] mx-auto flex max-w-xl flex-col items-center gap-2 rounded-[6px] border border-ink/20 bg-night-800/95 px-4 py-3 text-center shadow-lift backdrop-blur-sm sm:flex-row sm:text-left"
+          >
+            <p className="flex-1 font-hand text-base text-ink/90">
+              {t("storageNotice")}{" "}
+              <button onClick={() => { ackStorage(); go("legal"); }} className="text-lamp underline">
+                {t("navLegal")}
+              </button>
+            </p>
+            <button
+              onClick={ackStorage}
+              className="shrink-0 rounded-full bg-lamp/20 px-4 py-1 font-marker text-sm text-lamp transition-colors hover:bg-lamp/30"
+            >
+              {t("storageOk")}
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <Confetti trigger={confettiKey} />
 
