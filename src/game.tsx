@@ -155,10 +155,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
         setConfettiKey((k) => k + 1);
       }
     };
-    const onWelcome = ({ clientId }: { clientId: string }) =>
+    const onWelcome = ({ clientId, sig }: { clientId: string; sig?: string }) => {
       localStorage.setItem("clientId", clientId);
+      if (sig) localStorage.setItem("clientSig", sig);
+    };
     const onConnect = () => {
-      socket.emit("hello", { clientId: localStorage.getItem("clientId") });
+      socket.emit("hello", {
+        clientId: localStorage.getItem("clientId"),
+        sig: localStorage.getItem("clientSig"),
+      });
       socket.emit("getFeed");
     };
 

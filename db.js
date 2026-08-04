@@ -86,6 +86,7 @@ for (const def of [
   "modelsUsed TEXT",
   "brokeCount INTEGER NOT NULL DEFAULT 0",
   "isBot INTEGER NOT NULL DEFAULT 0",
+  "nickKey TEXT", // clave normalizada del nick (anti-impersonación por homoglifos/leet)
 ]) addColumn("users", def);
 for (const def of [
   "authorClientId TEXT",
@@ -105,7 +106,7 @@ const stmtInsertUser = db.prepare(
 );
 const stmtSetCredits = db.prepare("UPDATE users SET credits = ? WHERE clientId = ?");
 const stmtSetProfile = db.prepare(
-  "UPDATE users SET email = ?, nick = ?, prefs = ?, sex = ? WHERE clientId = ?"
+  "UPDATE users SET email = ?, nick = ?, prefs = ?, sex = ?, nickKey = ? WHERE clientId = ?"
 );
 const stmtSetPrefs = db.prepare("UPDATE users SET prefs = ?, sex = ? WHERE clientId = ?");
 const stmtSetCountry = db.prepare("UPDATE users SET country = ? WHERE clientId = ?");
@@ -121,6 +122,10 @@ const stmtAddCoronas = db.prepare(
 const stmtNickTaken = db.prepare(
   "SELECT clientId FROM users WHERE nick = ? COLLATE NOCASE AND clientId != ?"
 );
+const stmtNickKeyTaken = db.prepare(
+  "SELECT clientId FROM users WHERE nickKey = ? AND nickKey IS NOT NULL AND clientId != ?"
+);
+const stmtUserExists = db.prepare("SELECT 1 AS x FROM users WHERE clientId = ? LIMIT 1");
 
 const stmtInsertAnswer = db.prepare(
   "INSERT INTO answers (id, prompt, answer, model, authorClientId, roast, cutoff, dailyDay, ts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -202,13 +207,14 @@ export function setCredits(clientId, credits) {
   stmtSetCredits.run(credits, clientId);
 }
 
-export function upsertProfile(clientId, { email, nick, prefs, sex }, startCredits) {
+export function upsertProfile(clientId, { email, nick, prefs, sex, nickKey }, startCredits) {
   getUser(clientId, startCredits);
   stmtSetProfile.run(
     email ?? null,
     nick ?? null,
     prefs ? JSON.stringify(prefs) : null,
     sex ?? null,
+    nickKey ?? null,
     clientId
   );
   return parsePrefs(stmtGetUser.get(clientId));
@@ -239,6 +245,15 @@ export function addCoronas(clientId, human, ai) {
 
 export function isNickTaken(nick, clientId) {
   return !!stmtNickTaken.get(nick, clientId);
+}
+// Unicidad por clave normalizada: "аdmin"/"@dm1n"/"admin" cuentan como el mismo.
+export function isNickKeyTaken(nickKey, clientId) {
+  if (!nickKey) return false;
+  return !!stmtNickKeyTaken.get(nickKey, clientId);
+}
+// ¿Existe ya esta fila? (para grandfatherear clientIds legacy sin firma).
+export function userExists(clientId) {
+  return !!stmtUserExists.get(clientId);
 }
 
 // Crea/marca un usuario como bot (fila real para nick único; excluido del ranking).

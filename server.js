@@ -48,10 +48,12 @@ import {
   topPlayers,
   bubblePlayers,
   answerOfWeek,
+  userExists,
+  isNickKeyTaken,
 } from "./db.js";
 import helmet from "helmet";
 import { rateLimit, startRateLimitGc, connOpen, connClose, ipOf, LIMITS } from "./security.js";
-import { moderate, moderateNick } from "./moderation.js";
+import { moderate, moderateNick, nickKey } from "./moderation.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 5050;
@@ -109,6 +111,40 @@ const hallucs = new Map(); // id -> { id, prompt, answer, authorClientId, model,
 
 const newId = () => crypto.randomBytes(8).toString("hex");
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+
+// ---- Identidad: clientId firmado (HMAC) ----
+// El clientId es de "bajo login" (localStorage), pero lo firmamos para que nadie
+// pueda FORJAR ids arbitrarios (p. ej. impersonar bots o pre-reclamar ids). El
+// secreto persiste junto a la DB para sobrevivir reinicios (si no está en env).
+const SECRET_PATH = path.join(
+  path.dirname(process.env.DB_PATH || path.join(__dirname, "data", "tuia.db")),
+  ".client_secret"
+);
+function loadOrCreateSecret() {
+  if (process.env.CLIENT_SECRET) return process.env.CLIENT_SECRET;
+  try {
+    return fs.readFileSync(SECRET_PATH, "utf8").trim();
+  } catch {
+    const s = crypto.randomBytes(32).toString("hex");
+    try {
+      fs.mkdirSync(path.dirname(SECRET_PATH), { recursive: true });
+      fs.writeFileSync(SECRET_PATH, s, { mode: 0o600 });
+    } catch {
+      /* si no se puede persistir, el secreto vive solo en memoria */
+    }
+    return s;
+  }
+}
+const CLIENT_SECRET = loadOrCreateSecret();
+const signId = (id) =>
+  crypto.createHmac("sha256", CLIENT_SECRET).update(id).digest("base64url").slice(0, 24);
+function verifyId(id, sig) {
+  if (typeof sig !== "string" || sig.length < 8) return false;
+  const expected = signId(id);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
 
 // ---- Usuarios (vía SQLite) / Users (via SQLite) ----
 const getUser = (clientId) => dbGetUser(clientId, START_CREDITS);
@@ -618,15 +654,27 @@ io.on("connection", (socket) => {
 
   socket.on("hello", (payload = {}) => {
     if (limited(socket, "hello")) return;
-    const clientId =
+    const given =
       typeof payload.clientId === "string" && payload.clientId.length >= 8
         ? payload.clientId.slice(0, 64)
-        : newId();
+        : null;
+    const sig = typeof payload.sig === "string" ? payload.sig : null;
+    // Nunca aceptamos ids internos (bots/semillas) del cliente.
+    const reserved = given && (given.startsWith("bot:") || given === "seed");
+    let clientId;
+    if (given && !reserved && sig && verifyId(given, sig)) {
+      clientId = given; // token firmado válido
+    } else if (given && !reserved && !sig && userExists(given)) {
+      clientId = given; // legacy (sin firma) pero ya existe → grandfather + upgrade
+    } else {
+      clientId = newId(); // sin id, forjado, reservado o desconocido → id nuevo del server
+    }
     socket.data.clientId = clientId;
     addClientSocket(clientId, socket.id);
     getUser(clientId); // crea la fila si es nuevo
     setCountry(clientId, countryFromSocket(socket), START_CREDITS); // país por IP (Cloudflare)
-    socket.emit("welcome", { clientId });
+    // Devolvemos la firma para que el cliente la guarde y la reenvíe (migración transparente).
+    socket.emit("welcome", { clientId, sig: signId(clientId) });
     sendState(socket);
     flushDeliveries(clientId);
     broadcastStats();
@@ -647,10 +695,13 @@ io.on("connection", (socket) => {
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       return ack?.({ ok: false, error: "bad_email" });
     if (isNickTaken(nick, clientId)) return ack?.({ ok: false, error: "nick_taken" });
+    // Unicidad normalizada: bloquea gemelos por homoglifo/leet ("аdmin" vs "admin").
+    const nkey = nickKey(nick);
+    if (isNickKeyTaken(nkey, clientId)) return ack?.({ ok: false, error: "nick_taken" });
 
     const prefs = sanitizePrefs(payload.prefs);
     const sex = sanitizeSex(payload.sex);
-    upsertProfile(clientId, { email: email || null, nick, prefs, sex }, START_CREDITS);
+    upsertProfile(clientId, { email: email || null, nick, prefs, sex, nickKey: nkey }, START_CREDITS);
     sendState(socket);
     ack?.({ ok: true, profile: profileOf(clientId) });
   });

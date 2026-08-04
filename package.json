@@ -12,7 +12,8 @@
     "start": "node server.js",
     "server": "node server.js",
     "test:security": "node tests/security.e2e.mjs",
-    "test": "node tests/security.e2e.mjs"
+    "test:identity": "node tests/identity.e2e.mjs",
+    "test": "node tests/security.e2e.mjs && node tests/identity.e2e.mjs"
   },
   "engines": {
     "node": ">=18"
