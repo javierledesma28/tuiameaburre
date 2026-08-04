@@ -11,11 +11,14 @@
     "build": "tsc --noEmit && vite build",
     "start": "node server.js",
     "server": "node server.js",
+    "test:guard": "node tests/guard.mjs",
+    "test:unit": "node tests/db.unit.mjs",
     "test:security": "node tests/security.e2e.mjs",
     "test:identity": "node tests/identity.e2e.mjs",
     "test:reports": "node tests/reports.e2e.mjs",
+    "test:game": "node tests/game.e2e.mjs",
     "loadtest": "node tests/loadtest.mjs",
-    "test": "node tests/security.e2e.mjs && node tests/identity.e2e.mjs && node tests/reports.e2e.mjs"
+    "test": "node tests/guard.mjs && node tests/db.unit.mjs && node tests/security.e2e.mjs && node tests/identity.e2e.mjs && node tests/reports.e2e.mjs && node tests/game.e2e.mjs"
   },
   "engines": {
     "node": ">=18"
