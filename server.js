@@ -49,6 +49,9 @@ import {
   bubblePlayers,
   answerOfWeek,
 } from "./db.js";
+import helmet from "helmet";
+import { rateLimit, startRateLimitGc, connOpen, connClose, ipOf, LIMITS } from "./security.js";
+import { moderate, moderateNick } from "./moderation.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 5050;
@@ -301,6 +304,15 @@ function pendingRealCount() {
 
 // ---- HTTP + Socket.IO ----
 const app = express();
+app.disable("x-powered-by");
+// Cabeceras de seguridad. La CSP se afina aparte (el build usa fuentes de Google);
+// dejamos que las imágenes/tarjetas se puedan embeber cross-origin (previews sociales).
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 // En producción servimos el build de Vite (/dist); si no existe, /public.
 const distDir = path.join(__dirname, "dist");
 const staticDir = fs.existsSync(distDir) ? distDir : path.join(__dirname, "public");
@@ -579,8 +591,29 @@ function clearJob(jobId) {
   return job;
 }
 
+// Rate-limit por IP (la identidad clientId es de baja confianza / falsificable,
+// así que limitamos por IP real de Cloudflare). Devuelve true si hay que cortar.
+function limited(socket, action, ack) {
+  const [limit, win] = LIMITS[action] || LIMITS.read;
+  if (!rateLimit(`${action}:${socket.data.ip || "?"}`, limit, win)) {
+    ack?.({ ok: false, error: "rate_limited" });
+    return true;
+  }
+  return false;
+}
+
 io.on("connection", (socket) => {
+  // Tope de conexiones simultáneas por IP → frena connection-spam (DoS de disco:
+  // cada hello nuevo crea una fila de usuario en SQLite).
+  const ip = ipOf(socket);
+  socket.data.ip = ip;
+  if (!connOpen(ip)) {
+    socket.emit("error_msg", { error: "too_many_connections" });
+    return socket.disconnect(true);
+  }
+
   socket.on("hello", (payload = {}) => {
+    if (limited(socket, "hello")) return;
     const clientId =
       typeof payload.clientId === "string" && payload.clientId.length >= 8
         ? payload.clientId.slice(0, 64)
@@ -597,11 +630,15 @@ io.on("connection", (socket) => {
 
   // --- Alta / actualización de cuenta / register or update account ---
   socket.on("register", (payload = {}, ack) => {
+    if (limited(socket, "register", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const nick = String(payload.nick || "").trim().slice(0, 24);
     const email = String(payload.email || "").trim().slice(0, 120);
     if (nick.length < 2) return ack?.({ ok: false, error: "bad_nick" });
+    // Nick: sin insultos, sin nombres reservados (admin/bot/…), sin homoglifos.
+    const nm = moderateNick(nick);
+    if (!nm.ok) return ack?.({ ok: false, error: nm.reason });
     // Email opcional pero, si viene, mínimamente válido.
     if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
       return ack?.({ ok: false, error: "bad_email" });
@@ -615,6 +652,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("updatePrefs", (payload = {}, ack) => {
+    if (limited(socket, "updatePrefs", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const prefs = sanitizePrefs(payload.prefs);
@@ -626,6 +664,7 @@ io.on("connection", (socket) => {
 
   // --- Reaccionar a una nota del muro / react to a wall note ---
   socket.on("react", (payload = {}, ack) => {
+    if (limited(socket, "react", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const type = String(payload.type || "");
@@ -653,10 +692,13 @@ io.on("connection", (socket) => {
 
   // --- Modo humano: preguntar / Human mode: ask ---
   socket.on("ask", (payload = {}, ack) => {
+    if (limited(socket, "ask", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const text = String(payload.text || "").trim().slice(0, 1000);
     if (!text) return ack?.({ ok: false, error: "empty" });
+    const mod = moderate(text);
+    if (!mod.ok) return ack?.({ ok: false, error: mod.reason });
 
     // Boost humano: cuando no hay prompts reales esperando, preguntar es gratis.
     const boost = computeBoost();
@@ -763,6 +805,7 @@ io.on("connection", (socket) => {
 
   // Enviar la respuesta "de la IA" / submit the "AI" answer.
   socket.on("submitAnswer", (payload = {}, ack) => {
+    if (limited(socket, "submitAnswer", ack)) return;
     const clientId = socket.data.clientId;
     const job = clearJob(payload.jobId);
     if (!job) return ack?.({ ok: false, error: "expired" });
@@ -775,6 +818,11 @@ io.on("connection", (socket) => {
     if (!answer) {
       requeue(job.prompt);
       return ack?.({ ok: false, error: "empty" });
+    }
+    const mod = moderate(answer);
+    if (!mod.ok) {
+      requeue(job.prompt);
+      return ack?.({ ok: false, error: mod.reason });
     }
 
     // Recompensa base + boost del equipo IA (el congelado al tomar el job).
@@ -821,11 +869,13 @@ io.on("connection", (socket) => {
 
   // Respuesta de la semana (la más reaccionada en 7 días).
   socket.on("getHighlight", (_payload, ack) => {
+    if (limited(socket, "read", ack)) return;
     ack?.({ ok: true, highlight: answerOfWeek() });
   });
 
   // Mapa de burbujas (circle packing) — jugadores con sus stats (sin exponer isBot).
   socket.on("getBubbles", (_payload, ack) => {
+    if (limited(socket, "read", ack)) return;
     const players = bubblePlayers(140).map((u) => ({
       nick: u.nick,
       country: u.country || null,
@@ -840,6 +890,7 @@ io.on("connection", (socket) => {
 
   // --- Prompt del día / prompt of the day ---
   socket.on("getDaily", (_payload, ack) => {
+    if (limited(socket, "read", ack)) return;
     const clientId = socket.data.clientId;
     const day = dayKey();
     ack?.({
@@ -853,10 +904,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submitDaily", (payload = {}, ack) => {
+    if (limited(socket, "submitAnswer", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const answer = String(payload.answer || "").trim().slice(0, 2000);
     if (!answer) return ack?.({ ok: false, error: "empty" });
+    const mod = moderate(answer);
+    if (!mod.ok) return ack?.({ ok: false, error: mod.reason });
     const day = dayKey();
     if (hasDailyAnswer(clientId, day)) return ack?.({ ok: false, error: "already" });
 
@@ -892,10 +946,14 @@ io.on("connection", (socket) => {
   });
 
   socket.on("submitHallucination", (payload = {}, ack) => {
+    if (limited(socket, "submitHallucination", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    if (hallucs.size >= 300) return ack?.({ ok: false, error: "busy" });
     const answer = String(payload.answer || "").trim().slice(0, 2000);
     if (!answer) return ack?.({ ok: false, error: "empty" });
+    const mod = moderate(answer);
+    if (!mod.ok) return ack?.({ ok: false, error: mod.reason });
     const u = getUser(clientId);
     const model = pickModel(u.prefs?.favModel);
     const h = {
@@ -919,6 +977,7 @@ io.on("connection", (socket) => {
 
   // Votar una alucinación: ¿la creíste (real) o la cazaste (fake)?
   socket.on("voteHallucination", (payload = {}, ack) => {
+    if (limited(socket, "vote", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const h = hallucs.get(payload.id);
@@ -938,10 +997,14 @@ io.on("connection", (socket) => {
 
   // Enviar tu respuesta al prompt del duelo → entra a la pileta de emparejamiento.
   socket.on("submitDuelEntry", (payload = {}, ack) => {
+    if (limited(socket, "submitDuelEntry", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    if (duelEntries.length >= 300) return ack?.({ ok: false, error: "busy" });
     const answer = String(payload.answer || "").trim().slice(0, 2000);
     if (!answer) return ack?.({ ok: false, error: "empty" });
+    const mod = moderate(answer);
+    if (!mod.ok) return ack?.({ ok: false, error: mod.reason });
 
     const u = getUser(clientId);
     const model = pickModel(u.prefs?.favModel);
@@ -957,6 +1020,7 @@ io.on("connection", (socket) => {
 
   // Votar un duelo (A o B). Un voto por cliente; no podés votar tu propio duelo.
   socket.on("voteDuel", (payload = {}, ack) => {
+    if (limited(socket, "vote", ack)) return;
     const clientId = socket.data.clientId;
     if (!clientId) return ack?.({ ok: false, error: "no_session" });
     const d = duels.get(payload.duelId);
@@ -974,6 +1038,7 @@ io.on("connection", (socket) => {
 
   // --- Ranking público / public leaderboard ---
   socket.on("getRanking", (payload = {}, ack) => {
+    if (limited(socket, "read", ack)) return;
     const category = payload.category === "ai" ? "ai" : "human";
     const period = ["today", "week", "all"].includes(payload.period) ? payload.period : "all";
     const country =
@@ -1000,6 +1065,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
+    connClose(socket.data.ip);
     if (socket.data.clientId) removeClientSocket(socket.data.clientId, socket.id);
     for (const [jobId, job] of activeJobs) {
       if (job.responderSocketId === socket.id) {
@@ -1065,6 +1131,17 @@ if (BOTS_ENABLED) {
     if (pendingRealCount() < 2 && io.engine.clientsCount > 0) botAskOne();
   }, BOT_ASK_INTERVAL);
 }
+
+// Limpieza de rate-limits y poda de juegos en memoria (duelos/alucinaciones cerrados)
+// para acotar el uso de memoria a largo plazo.
+startRateLimitGc();
+setInterval(() => {
+  for (const [id, d] of duels) if (d.closed) duels.delete(id);
+  for (const [id, h] of hallucs) if (h.closed) hallucs.delete(id);
+  // Salvaguarda dura por si algo dejara de cerrarse.
+  while (duels.size > 400) duels.delete(duels.keys().next().value);
+  while (hallucs.size > 400) hallucs.delete(hallucs.keys().next().value);
+}, 120000).unref?.();
 
 ensureSeeds();
 server.listen(PORT, () => {

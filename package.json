@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit && vite build",
     "start": "node server.js",
-    "server": "node server.js"
+    "server": "node server.js",
+    "test:security": "node tests/security.e2e.mjs",
+    "test": "node tests/security.e2e.mjs"
   },
   "engines": {
     "node": ">=18"
@@ -21,6 +23,7 @@
     "d3-hierarchy": "^3.1.2",
     "express": "^4.19.2",
     "framer-motion": "^11.11.17",
+    "helmet": "^8.3.0",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
