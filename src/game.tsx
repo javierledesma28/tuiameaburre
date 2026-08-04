@@ -81,6 +81,7 @@ type GameCtx = {
   register: (email: string, nick: string, prefs: Prefs, sex: string) => Promise<any>;
   updatePrefs: (prefs: Prefs, sex: string) => Promise<any>;
   react: (answerId: string, type: ReactionType) => Promise<any>;
+  report: (answerId: string) => Promise<any>;
   getRanking: (filters: {
     category: "human" | "ai";
     period: "today" | "week" | "all";
@@ -146,6 +147,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setFeed(list.slice(0, 40).map((it) => ({ ...it, my: mine[it.id] ?? null })));
     };
     const onFeedNew = (item: FeedItem) => setFeed((f) => [{ ...item, my: null }, ...f].slice(0, 40));
+    const onFeedRemove = ({ id }: { id: string }) => setFeed((f) => f.filter((it) => it.id !== id));
     // Conteos de reacciones actualizados (difundido a todos).
     const onFeedReact = (u: { id: string; rUp: number; rBot: number; rMeh: number; rSkull: number }) =>
       setFeed((f) => f.map((it) => (it.id === u.id ? { ...it, rUp: u.rUp, rBot: u.rBot, rMeh: u.rMeh, rSkull: u.rSkull } : it)));
@@ -173,6 +175,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     socket.on("stats", onStats);
     socket.on("feed:init", onFeedInit);
     socket.on("feed:new", onFeedNew);
+    socket.on("feed:remove", onFeedRemove);
     socket.on("feed:react", onFeedReact);
     socket.on("unlocked", onUnlocked);
     if (socket.connected) onConnect();
@@ -184,6 +187,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       socket.off("stats", onStats);
       socket.off("feed:init", onFeedInit);
       socket.off("feed:new", onFeedNew);
+      socket.off("feed:remove", onFeedRemove);
       socket.off("feed:react", onFeedReact);
       socket.off("unlocked", onUnlocked);
     };
@@ -236,6 +240,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     register: (email, nick, prefs, sex) => emitAck("register", { email, nick, prefs, sex }),
     updatePrefs: (prefs, sex) => emitAck("updatePrefs", { prefs, sex }),
     react,
+    report: (answerId) => emitAck("report", { answerId }),
     getRanking: (filters) => emitAck("getRanking", filters),
     getHighlight: () => emitAck("getHighlight", {}),
     getHallOfShame: () => emitAck("getHallOfShame", {}),

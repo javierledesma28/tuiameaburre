@@ -50,6 +50,9 @@ import {
   answerOfWeek,
   userExists,
   isNickKeyTaken,
+  addReport,
+  hideAnswer,
+  getAnswerById,
 } from "./db.js";
 import helmet from "helmet";
 import { rateLimit, startRateLimitGc, connOpen, connClose, ipOf, LIMITS } from "./security.js";
@@ -84,6 +87,9 @@ const BOT_BUDGET_USD = Number(process.env.BOT_BUDGET_USD || 20);
 const botAnswerTimers = new Map(); // promptId -> timeout (cancelable si lo toma un humano)
 // Tope de conexiones simultáneas por IP (configurable; alto para tolerar CGNAT).
 const MAX_CONN_PER_IP = Number(process.env.MAX_CONN_PER_IP || 30);
+// Moderación: reportes para auto-ocultar + borrado admin (token por env).
+const REPORT_HIDE_THRESHOLD = Number(process.env.REPORT_HIDE_THRESHOLD || 3);
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || null;
 
 // ---- Estado en memoria (lo efímero) / In-memory state (the ephemeral bits) ----
 const queue = []; // prompts pendientes: { id, text, askerClientId, seed, tone, boostedAsk, createdAt }
@@ -410,6 +416,13 @@ function pushFeed(prompt, answer, model, authorClientId, roast, cutoff, dailyDay
   totalAnswered++;
   io.emit("feed:new", item);
   return item;
+}
+
+// Saca una nota del muro (cache en memoria) y avisa a todos para que la quiten.
+function removeFromFeed(id) {
+  const i = recentAnswers.findIndex((it) => it.id === id);
+  if (i !== -1) recentAnswers.splice(i, 1);
+  io.emit("feed:remove", { id });
 }
 
 // ---- Bots: responder y preguntar / bots: answer and ask ----
@@ -743,6 +756,33 @@ io.on("connection", (socket) => {
       checkAchievements(res.answer.authorClientId); // querido / mas_robot
     }
     ack?.({ ok: true, my: res.my, answer: res.answer });
+  });
+
+  // --- Reportar una nota / report a wall note ---
+  socket.on("report", (payload = {}, ack) => {
+    if (limited(socket, "report", ack)) return;
+    const clientId = socket.data.clientId;
+    if (!clientId) return ack?.({ ok: false, error: "no_session" });
+    const id = String(payload.answerId || "");
+    const ans = getAnswerById(id);
+    if (!ans) return ack?.({ ok: false, error: "not_found" });
+    const count = addReport(id, clientId);
+    // Auto-ocultar al superar el umbral (soft-hide, reversible por admin en DB).
+    if (!ans.hidden && count >= REPORT_HIDE_THRESHOLD) {
+      hideAnswer(id);
+      removeFromFeed(id);
+    }
+    ack?.({ ok: true });
+  });
+
+  // --- Borrado admin (token por env) / admin removal ---
+  socket.on("adminRemove", (payload = {}, ack) => {
+    if (!ADMIN_TOKEN || payload.token !== ADMIN_TOKEN)
+      return ack?.({ ok: false, error: "forbidden" });
+    const id = String(payload.answerId || "");
+    if (!hideAnswer(id)) return ack?.({ ok: false, error: "not_found" });
+    removeFromFeed(id);
+    ack?.({ ok: true });
   });
 
   // --- Modo humano: preguntar / Human mode: ask ---

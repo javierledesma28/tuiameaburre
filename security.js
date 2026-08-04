@@ -63,6 +63,7 @@ export const LIMITS = {
   submitDuelEntry: [6, 60000],
   submitHallucination: [6, 60000],
   vote: [40, 60000], // duelo + alucinación
+  report: [20, 60000],
   read: [60, 60000], // getRanking/getBubbles/getDaily/getHighlight (consultas caras)
   hello: [30, 60000],
 };

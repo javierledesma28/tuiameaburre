@@ -130,6 +130,8 @@ const STRINGS: Record<Lang, Dict> = {
     reactMeh: "meh",
     reactSkull: "demasiado IA",
     reactSelf: "no podés votar tu propia respuesta",
+    report: "reportar",
+    reported: "🚩 gracias, lo revisamos",
     coronasHint: "ganás coronas cuando reaccionan a tus respuestas",
     // mapa de burbujas (circle packing)
     navMap: "Galaxia",
@@ -407,6 +409,8 @@ const STRINGS: Record<Lang, Dict> = {
     reactMeh: "meh",
     reactSkull: "too AI",
     reactSelf: "you can't vote your own answer",
+    report: "report",
+    reported: "🚩 thanks, we'll review it",
     coronasHint: "you earn crowns when people react to your answers",
     // bubble map (circle packing)
     navMap: "Galaxy",

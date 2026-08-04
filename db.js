@@ -97,7 +97,18 @@ for (const def of [
   "roast INTEGER NOT NULL DEFAULT 0",
   "cutoff INTEGER NOT NULL DEFAULT 0",
   "dailyDay TEXT",
+  "hidden INTEGER NOT NULL DEFAULT 0", // oculta por reportes o por admin
 ]) addColumn("answers", def);
+
+// Reportes de contenido (un reporte por persona por nota).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS reports (
+    answerId         TEXT NOT NULL,
+    reporterClientId TEXT NOT NULL,
+    ts               INTEGER NOT NULL,
+    PRIMARY KEY (answerId, reporterClientId)
+  );
+`);
 
 // ---- Statements preparados / prepared statements ----
 const stmtGetUser = db.prepare("SELECT * FROM users WHERE clientId = ?");
@@ -133,17 +144,17 @@ const stmtInsertAnswer = db.prepare(
 const stmtGetAnswer = db.prepare("SELECT * FROM answers WHERE id = ?");
 // Respuestas al prompt del día (para la galería diaria).
 const stmtDailyAnswers = db.prepare(
-  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE dailyDay = ? ORDER BY ts DESC LIMIT ?"
+  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE dailyDay = ? AND hidden = 0 ORDER BY ts DESC LIMIT ?"
 );
 const stmtHasDaily = db.prepare(
   "SELECT id FROM answers WHERE dailyDay = ? AND authorClientId = ? LIMIT 1"
 );
 const stmtRecentAnswers = db.prepare(
-  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers ORDER BY ts DESC LIMIT ?"
+  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE hidden = 0 ORDER BY ts DESC LIMIT ?"
 );
 // Salón de la vergüenza: las notas con más votos 💀.
 const stmtHallOfShame = db.prepare(
-  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE rSkull > 0 ORDER BY rSkull DESC, ts DESC LIMIT ?"
+  "SELECT id, prompt, answer, model, authorClientId, rUp, rBot, rMeh, rSkull, roast, cutoff, ts FROM answers WHERE rSkull > 0 AND hidden = 0 ORDER BY rSkull DESC, ts DESC LIMIT ?"
 );
 const stmtCountAnswers = db.prepare("SELECT COUNT(*) AS n FROM answers");
 const stmtTrimAnswers = db.prepare(
@@ -360,6 +371,24 @@ export function answersCount() {
   return stmtCountAnswers.get().n;
 }
 
+// ---- Reportes de contenido / content reports ----
+const stmtAddReport = db.prepare(
+  "INSERT OR IGNORE INTO reports (answerId, reporterClientId, ts) VALUES (?, ?, ?)"
+);
+const stmtReportCount = db.prepare("SELECT COUNT(*) AS n FROM reports WHERE answerId = ?");
+const stmtHideAnswer = db.prepare("UPDATE answers SET hidden = 1 WHERE id = ?");
+// Registra un reporte (idempotente por persona) y devuelve el total de reportes.
+export function addReport(answerId, reporterClientId) {
+  stmtAddReport.run(answerId, reporterClientId, Date.now());
+  return stmtReportCount.get(answerId).n;
+}
+export function hideAnswer(answerId) {
+  return stmtHideAnswer.run(answerId).changes > 0;
+}
+export function getAnswerById(id) {
+  return stmtGetAnswer.get(id) || null;
+}
+
 // Reacciones del cliente a un set de notas → { answerId: type }.
 export function myReactions(clientId) {
   const out = {};
@@ -484,6 +513,7 @@ const stmtAnswerOfWeek = db.prepare(`
     SELECT answerId, COUNT(*) AS c FROM reactions
     WHERE ts >= ? GROUP BY answerId ORDER BY c DESC LIMIT 1
   ) top ON top.answerId = a.id
+  WHERE a.hidden = 0
 `);
 export function answerOfWeek() {
   const cutoff = Date.now() - 7 * 86400000;

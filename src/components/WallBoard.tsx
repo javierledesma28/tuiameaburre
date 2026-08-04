@@ -26,7 +26,7 @@ function hashId(id: string) {
 function Note({ item }: { item: FeedItem }) {
   const h = hashId(item.id);
   const model = item.model ? MODEL_BY_ID[item.model] : null;
-  const { react, profile, toast } = useGame();
+  const { react, report, profile, toast } = useGame();
   const { t } = useI18n();
 
   // localStorage tiene el clientId; comparamos para no votar lo propio.
@@ -43,6 +43,10 @@ function Note({ item }: { item: FeedItem }) {
   const onReact = (type: ReactionType) => {
     if (isMine) return toast(t("reactSelf"));
     react(item.id, type);
+  };
+  const onReport = () => {
+    report(item.id);
+    toast(t("reported"));
   };
 
   return (
@@ -100,7 +104,15 @@ function Note({ item }: { item: FeedItem }) {
             </button>
           );
         })}
-        <span className="ml-auto">
+        <span className="ml-auto flex items-center gap-1.5">
+          <button
+            onClick={onReport}
+            title={t("report")}
+            aria-label={t("report")}
+            className="rounded-full border border-paper-ink/15 px-2 py-0.5 font-mono text-[11px] leading-none text-paper-ink/40 transition-colors hover:border-marker-red hover:text-marker-red"
+          >
+            🚩
+          </button>
           <ShareButton prompt={item.prompt} answer={item.answer} modelId={item.model} compact />
         </span>
       </div>
