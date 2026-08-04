@@ -9,6 +9,21 @@ export default function Nav() {
   const { credits, creditCap, screen, go, profile, coronas } = useGame();
   const { t, lang, toggle } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Al top la barra es transparente; al scrollear aparece un degradado para que
+  // el menú no se solape con el contenido del sitio.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    // El scroll del sitio ocurre en <body> (por height:100% en html/body/#root),
+    // no en window. Leemos de las tres fuentes y capturamos en fase de captura
+    // para enterarnos aunque el evento se despache en body.
+    const onScroll = () => {
+      const y = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+      setScrolled(y > 8);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    return () => window.removeEventListener("scroll", onScroll, { capture: true });
+  }, []);
 
   const accountLabel = profile?.nick ? `★ ${profile.nick}` : t("navLogin");
 
@@ -62,7 +77,11 @@ export default function Nav() {
   );
 
   return (
-    <header className="sticky top-0 z-40 mx-auto flex max-w-6xl items-center gap-2 px-4 py-4 backdrop-blur-[2px] sm:gap-5 sm:px-5">
+    <header
+      className={`sticky top-0 z-40 mx-auto flex max-w-6xl items-center gap-2 px-4 py-4 sm:gap-5 sm:px-5 before:pointer-events-none before:absolute before:left-1/2 before:top-0 before:-z-10 before:h-full before:w-screen before:-translate-x-1/2 before:bg-gradient-to-b before:from-night-900 before:via-night-900/85 before:to-transparent before:opacity-0 before:transition-opacity before:duration-300 ${
+        scrolled ? "backdrop-blur-[3px] before:opacity-100" : ""
+      }`}
+    >
       {/* marca en cinta / brand on tape */}
       <button onClick={() => navTo("home")} className="group relative -rotate-2 shrink-0">
         <span className="tape" style={{ left: -8, top: -10, transform: "rotate(-8deg)" }} />
