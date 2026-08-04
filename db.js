@@ -389,6 +389,16 @@ export function getAnswerById(id) {
   return stmtGetAnswer.get(id) || null;
 }
 
+// Cierre limpio: checkpoint del WAL a la DB principal y cerrar. Para shutdown grácil.
+export function closeDb() {
+  try {
+    db.pragma("wal_checkpoint(TRUNCATE)");
+    db.close();
+  } catch {
+    /* ignore */
+  }
+}
+
 // Backup online (consistente con WAL) a un archivo con timestamp; poda los viejos.
 // Nota: el backup va al mismo volumen; para desastre total, copiá el volumen aparte.
 export function backupTo(dir, keep = 14) {

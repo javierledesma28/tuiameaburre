@@ -54,6 +54,7 @@ import {
   hideAnswer,
   getAnswerById,
   backupTo,
+  closeDb,
 } from "./db.js";
 import helmet from "helmet";
 import { rateLimit, startRateLimitGc, connOpen, connClose, ipOf, LIMITS } from "./security.js";
@@ -472,7 +473,10 @@ async function botRespondToPrompt(prompt) {
   queue.splice(i, 1);
   const bot = pickBot();
   const model = MODEL_BY_ID[bot.model] || pickModel(null);
-  const answer = await botGenerateAnswer(prompt.text, model);
+  let answer = await botGenerateAnswer(prompt.text, model);
+  // La salida del LLM también se modera (un prompt malicioso podría inyectar algo
+  // feo); si no pasa, cae a una plantilla segura.
+  if (!moderate(answer).ok) answer = templateAnswer();
   // Se entrega y publica por el flujo normal: el humano lo ve como "IA (un humano)".
   if (!prompt.seed && !prompt.bot) {
     deliverAnswer(prompt.askerClientId, {
@@ -1275,6 +1279,32 @@ setInterval(() => {
   while (duels.size > 400) duels.delete(duels.keys().next().value);
   while (hallucs.size > 400) hallucs.delete(hallucs.keys().next().value);
 }, 120000).unref?.();
+
+// Guardas de proceso: un error en un handler NO debe tirar a todos los jugadores.
+// Logueamos y seguimos sirviendo; los casos realmente fatales los cubre el
+// restart:unless-stopped de Docker.
+process.on("uncaughtException", (e) => console.error("[uncaughtException]", e));
+process.on("unhandledRejection", (e) => console.error("[unhandledRejection]", e));
+
+// Apagado grácil: backup + checkpoint del WAL antes de salir (Docker manda SIGTERM).
+let shuttingDown = false;
+function shutdown(sig) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${sig} — respaldando y cerrando…`);
+  const done = () => {
+    try {
+      closeDb();
+    } catch {
+      /* ignore */
+    }
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref?.();
+  };
+  runBackup().finally(done);
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
 
 ensureSeeds();
 server.listen(PORT, () => {

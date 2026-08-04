@@ -17,6 +17,7 @@ services:
       MAX_CONN_PER_IP: "${MAX_CONN_PER_IP:-30}"
       REPORT_HIDE_THRESHOLD: "${REPORT_HIDE_THRESHOLD:-3}"
       ADMIN_TOKEN: "${ADMIN_TOKEN:-}"
+      TRUST_PROXY: "${TRUST_PROXY:-true}"
     volumes:
       - tuia-data:/app/data
     networks:

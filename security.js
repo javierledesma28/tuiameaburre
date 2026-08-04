@@ -46,11 +46,16 @@ export function connClose(ip) {
   else conns.set(ip, n);
 }
 
-// IP real del cliente detrás de Cloudflare (cf-connecting-ip) con fallbacks.
+// IP real del cliente. Detrás de Cloudflare confiamos en cf-connecting-ip.
+// TRUST_PROXY=false (si algún día se expone SIN un proxy de confianza) ignora las
+// cabeceras de forwarding para que no se pueda spoofear la IP y saltear los límites.
+const TRUST_PROXY = process.env.TRUST_PROXY !== "false";
 export function ipOf(socket) {
+  const addr = socket.handshake?.address || "?";
+  if (!TRUST_PROXY) return String(addr).trim();
   const h = socket.handshake?.headers || {};
   const xff = typeof h["x-forwarded-for"] === "string" ? h["x-forwarded-for"].split(",")[0] : null;
-  return String(h["cf-connecting-ip"] || xff || socket.handshake?.address || "?").trim();
+  return String(h["cf-connecting-ip"] || xff || addr || "?").trim();
 }
 
 // Presupuestos por acción: [límite, ventanaMs]. Ajustables sin tocar la lógica.
