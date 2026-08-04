@@ -80,6 +80,8 @@ const BOT_ASK_INTERVAL = Number(process.env.BOT_ASK_INTERVAL_MS || 30000);
 // Tope de gasto mensual del LLM de bots (US$). Al alcanzarlo, cae a plantillas.
 const BOT_BUDGET_USD = Number(process.env.BOT_BUDGET_USD || 20);
 const botAnswerTimers = new Map(); // promptId -> timeout (cancelable si lo toma un humano)
+// Tope de conexiones simultáneas por IP (configurable; alto para tolerar CGNAT).
+const MAX_CONN_PER_IP = Number(process.env.MAX_CONN_PER_IP || 30);
 
 // ---- Estado en memoria (lo efímero) / In-memory state (the ephemeral bits) ----
 const queue = []; // prompts pendientes: { id, text, askerClientId, seed, tone, boostedAsk, createdAt }
@@ -607,7 +609,9 @@ io.on("connection", (socket) => {
   // cada hello nuevo crea una fila de usuario en SQLite).
   const ip = ipOf(socket);
   socket.data.ip = ip;
-  if (!connOpen(ip)) {
+  // Tope alto por defecto: detrás de CGNAT/carriers móviles muchos usuarios reales
+  // comparten una IP pública, así que apuntamos a frenar abuso masivo, no a NATs.
+  if (!connOpen(ip, MAX_CONN_PER_IP)) {
     socket.emit("error_msg", { error: "too_many_connections" });
     return socket.disconnect(true);
   }

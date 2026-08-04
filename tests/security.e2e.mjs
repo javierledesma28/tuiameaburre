@@ -13,7 +13,7 @@ const ok = (c, m) => (c ? (pass++, console.log("✅", m)) : (fail++, console.log
 
 const srv = spawn(process.execPath, ["server.js"], {
   cwd: process.cwd(),
-  env: { ...process.env, PORT: String(PORT), DB_PATH: dbFile, BOTS_ENABLED: "false" },
+  env: { ...process.env, PORT: String(PORT), DB_PATH: dbFile, BOTS_ENABLED: "false", MAX_CONN_PER_IP: "10" },
   stdio: ["ignore", "pipe", "pipe"],
 });
 srv.stderr.on("data", (d) => process.stderr.write("[srv] " + d));
@@ -109,7 +109,7 @@ try {
   await wait(1200);
   const stillOpen = raws.filter((s) => s.connected).length;
   ok(stillOpen < 15, `tope de conexiones por IP aplicado (nuevas vivas: ${stillOpen} < 15)`);
-  ok(stillOpen <= 12, `nunca más de 12 conexiones simultáneas por IP (vivas: ${stillOpen})`);
+  ok(stillOpen <= 10, `nunca más de MAX_CONN_PER_IP=10 conexiones por IP (vivas: ${stillOpen})`);
   raws.forEach((s) => s.close());
 
   [a, b, c, d, e, f].forEach((x) => x.s.close());
