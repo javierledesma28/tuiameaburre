@@ -12,9 +12,10 @@ const ES = {
       "Si te das de alta: tu apodo, y opcionalmente un email (no lo verificamos ni te mandamos nada).",
       "Tu país aproximado (por IP, vía Cloudflare) y estadísticas del juego (partidas, coronas).",
       "Lo que escribís en el juego (preguntas y respuestas) se muestra públicamente en el muro.",
+      "Contamos las visitas con Umami, una herramienta de analítica que corre en un servidor propio (analytics.t28.io). Anota de forma anónima qué página se abrió, desde qué sitio llegaste, tu país aproximado, navegador, sistema, tamaño de pantalla e idioma. No usa cookies, no guarda tu IP, no arma perfiles tuyos, no registra lo que escribís en el juego y respeta la señal «No rastrear» de tu navegador.",
     ]],
     ["Qué NO hacemos", [
-      "No vendemos tus datos. No hay publicidad ni rastreadores de terceros.",
+      "No vendemos tus datos. No hay publicidad ni herramientas de analítica de terceros: las visitas las medimos nosotros, en un servidor propio.",
       "No usamos cookies de marketing. El único almacenamiento es funcional (tu sesión).",
     ]],
     ["Reglas de convivencia", [
@@ -38,9 +39,10 @@ const EN = {
       "If you sign up: your nickname, and optionally an email (unverified — we never email you).",
       "Your approximate country (by IP, via Cloudflare) and game stats (games, crowns).",
       "What you type in the game (questions and answers) is shown publicly on the board.",
+      "We count visits with Umami, an analytics tool that runs on our own server (analytics.t28.io). It anonymously notes which page was opened, where you came from, your approximate country, browser, system, screen size and language. It uses no cookies, doesn't store your IP, doesn't build profiles of you, doesn't record what you type in the game and honors your browser's “Do Not Track” signal.",
     ]],
     ["What we DON'T do", [
-      "We don't sell your data. No ads, no third-party trackers.",
+      "We don't sell your data. No ads and no third-party analytics tools: we measure visits ourselves, on our own server.",
       "No marketing cookies. The only storage is functional (your session).",
     ]],
     ["House rules", [

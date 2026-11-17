@@ -351,6 +351,9 @@ function pendingRealCount() {
 // ---- HTTP + Socket.IO ----
 const app = express();
 app.disable("x-powered-by");
+// Analítica propia (Umami autoalojado). Es el único origen externo con permiso de
+// script y de conexión: el tracker se carga de ahí y manda los eventos ahí mismo.
+const ANALYTICS_ORIGIN = "https://analytics.t28.io";
 // Cabeceras de seguridad. La CSP se afina aparte (el build usa fuentes de Google);
 // dejamos que las imágenes/tarjetas se puedan embeber cross-origin (previews sociales).
 app.use(
@@ -361,11 +364,11 @@ app.use(
       directives: {
         // El build de Vite sirve JS/CSS propios (hashed). React usa estilos inline
         // (style={}), y las fuentes vienen de Google Fonts. Socket.IO usa wss.
-        "script-src": ["'self'"],
+        "script-src": ["'self'", ANALYTICS_ORIGIN],
         "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         "font-src": ["'self'", "https://fonts.gstatic.com", "data:"],
         "img-src": ["'self'", "data:", "blob:"],
-        "connect-src": ["'self'", "ws:", "wss:"],
+        "connect-src": ["'self'", "ws:", "wss:", ANALYTICS_ORIGIN],
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
         "frame-ancestors": ["'none'"], // anti-clickjacking (más fuerte que X-Frame-Options)

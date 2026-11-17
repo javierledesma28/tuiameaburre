@@ -35,6 +35,19 @@
       href="https://fonts.googleapis.com/css2?family=Shantell+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Permanent+Marker&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
       rel="stylesheet"
     />
+    <!-- Analítica propia (Umami autoalojado, sin cookies). data-host-url es obligatorio:
+         sin él el script postea a /js/api/event en este mismo dominio y mide 0.
+         exclude-search/exclude-hash: ninguna URL del juego llega con parámetros ni ids. -->
+    <script
+      defer
+      src="https://analytics.t28.io/js/t.js"
+      data-website-id="f9b84f81-726c-4b26-998c-c68dee44e241"
+      data-host-url="https://analytics.t28.io"
+      data-domains="tuiameaburre.com"
+      data-exclude-search="true"
+      data-exclude-hash="true"
+      data-do-not-track="true"
+    ></script>
   </head>
   <body>
     <div id="root"></div>
